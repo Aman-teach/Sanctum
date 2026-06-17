@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Restricted</title>
+    <style>
+        :root {
+            --bg-color: #FCFCFA;
+            --surface-color: #F6F6F2;
+            --text-primary: #1E1E1E;
+            --text-secondary: #6B6B67;
+            --accent-forest: #2E4035;
+            --border-color: #E6E6E1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: Georgia, serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .container {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 48px 32px;
+            text-align: center;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        }
+
+        .icon-container {
+            margin: 0 auto 28px;
+            font-size: 40px;
+            color: var(--accent-forest);
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 400;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+            font-family: Georgia, serif;
+        }
+
+        p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            margin-bottom: 36px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--accent-forest);
+            color: var(--bg-color);
+            text-decoration: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            padding: 10px 24px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(46, 64, 53, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-container">
+            🛡
+        </div>
+        <h1>Access Restricted</h1>
+        <p>This resource is blocked by Dharma Sanctum. SafeSearch filters are strictly enforced to preserve a clean and focused browsing environment.</p>
+        <button class="btn" onclick="history.back();">Return to Safety</button>
+    </div>
+</body>
+</html>

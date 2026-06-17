@@ -1,0 +1,2235 @@
+package com.example.sanctum
+
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.os.Bundle
+import android.view.ViewGroup
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.Image
+import com.example.sanctum.R
+import android.app.DownloadManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Environment
+import android.webkit.URLUtil
+import android.webkit.ValueCallback
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.net.URLEncoder
+
+// Premium Inter Font Family loaded from resources
+val Inter = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold)
+)
+
+val defaultTypography = Typography()
+val AppTypography = Typography(
+    displayLarge = defaultTypography.displayLarge.copy(fontFamily = Inter),
+    displayMedium = defaultTypography.displayMedium.copy(fontFamily = Inter),
+    displaySmall = defaultTypography.displaySmall.copy(fontFamily = Inter),
+    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = Inter),
+    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = Inter),
+    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = Inter),
+    titleLarge = defaultTypography.titleLarge.copy(fontFamily = Inter),
+    titleMedium = defaultTypography.titleMedium.copy(fontFamily = Inter),
+    titleSmall = defaultTypography.titleSmall.copy(fontFamily = Inter),
+    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = Inter),
+    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = Inter),
+    bodySmall = defaultTypography.bodySmall.copy(fontFamily = Inter),
+    labelLarge = defaultTypography.labelLarge.copy(fontFamily = Inter),
+    labelMedium = defaultTypography.labelMedium.copy(fontFamily = Inter),
+    labelSmall = defaultTypography.labelSmall.copy(fontFamily = Inter)
+)
+
+// Premium Warm Light Editorial Color Palette
+val EditorialPaper = Color(0xFFFCFCFA)      // Soft book page white
+val EditorialSurface = Color(0xFFF6F6F2)    // Warm sand/clay surface
+val EditorialInk = Color(0xFF1E1E1E)        // Deep letterpress charcoal ink
+val EditorialMutedInk = Color(0xFF6B6B67)   // Soft graphite gray
+val EditorialForest = Color(0xFF2E4035)     // Editorial accent forest green
+val EditorialBorder = Color(0xFFE6E6E1)     // Soft separator lines
+
+class MainActivity : ComponentActivity() {
+
+    var filePathCallback: ValueCallback<Array<Uri>>? = null
+
+    val fileChooserLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = result.data
+        val results = if (result.resultCode == RESULT_OK && data != null) {
+            val dataString = data.dataString
+            val clipData = data.clipData
+            if (clipData != null) {
+                val count = clipData.itemCount
+                Array(count) { i -> clipData.getItemAt(i).uri }
+            } else if (dataString != null) {
+                arrayOf(Uri.parse(dataString))
+            } else null
+        } else null
+        filePathCallback?.onReceiveValue(results)
+        filePathCallback = null
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Initialize blocklist
+        CoroutineScope(Dispatchers.IO).launch {
+            BlocklistManager.init(applicationContext)
+        }
+
+        setContent {
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    background = EditorialPaper,
+                    surface = EditorialSurface,
+                    primary = EditorialForest,
+                    onBackground = EditorialInk,
+                    onSurface = EditorialInk
+                ),
+                typography = AppTypography
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    BrowserScreen(activity = this@MainActivity)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BrowserScreen(activity: MainActivity) {
+    val context = LocalContext.current
+    var currentUrl by remember { mutableStateOf("sanctum://home") }
+    var inputText by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var progress by remember { mutableFloatStateOf(0f) }
+    var canGoBack by remember { mutableStateOf(false) }
+    var canGoForward by remember { mutableStateOf(false) }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    val focusManager = LocalFocusManager.current
+
+    // Screen State
+    var activeScreen by remember { mutableStateOf(ActiveScreen.BROWSER) }
+
+    // Shield Features State
+    var adBlocking by remember { mutableStateOf(true) }
+    var antiFingerprint by remember { mutableStateOf(true) }
+    var httpsOnly by remember { mutableStateOf(false) }
+    var shieldMode by remember { mutableStateOf(ShieldMode.STANDARD) }
+    var familyMode by remember { mutableStateOf(true) }
+
+    // Instantiated once per BrowserScreen lifecycle and reused to prevent startup blank screen flash
+    val webView = remember {
+        WebView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            
+            // Set background transparent to prevent white flash
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            
+            @SuppressLint("SetJavaScriptEnabled")
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
+            settings.setSupportZoom(true)
+            settings.builtInZoomControls = true
+            settings.displayZoomControls = false
+
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): Boolean {
+                    val urlStr = request?.url?.toString() ?: return false
+                    val enforced = SafeSearchEnforcer.enforce(urlStr)
+                    if (enforced != null) {
+                        view?.loadUrl(enforced)
+                        return true
+                    }
+                    return false
+                }
+
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): WebResourceResponse? {
+                    val urlStr = request?.url?.toString() ?: return null
+                    if (request.isForMainFrame) {
+                        val isLocalBlocked = BlocklistManager.isBlocked(urlStr)
+                        val isKeywordBlocked = KeywordFilter.containsExplicitKeyword(urlStr)
+                        
+                        if (isLocalBlocked || isKeywordBlocked) {
+                            return getBlockedResponse(context)
+                        }
+                    }
+                    return super.shouldInterceptRequest(view, request)
+                }
+
+                override fun onPageStarted(
+                    view: WebView?,
+                    urlStr: String?,
+                    favicon: Bitmap?
+                ) {
+                    super.onPageStarted(view, urlStr, favicon)
+                    isLoading = true
+                    
+                    val url = urlStr ?: return
+                    if (url.startsWith("file:///android_asset/")) return
+                    
+                    // Direct SafeSearch check on start load as fallback
+                    val enforced = SafeSearchEnforce(url)
+                    if (enforced != null) {
+                        view?.stopLoading()
+                        view?.loadUrl(enforced)
+                        return
+                    }
+                    
+                    // Asynchronous DoH safety verification
+                    CoroutineScope(Dispatchers.IO).launch {
+                        when (DnsFilter.checkDomain(url)) {
+                            DnsCheckResult.BLOCKED -> {
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    view?.stopLoading()
+                                    view?.loadUrl("file:///android_asset/blocked.html")
+                                }
+                            }
+                            DnsCheckResult.ERROR -> {
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    view?.stopLoading()
+                                    view?.loadUrl("file:///android_asset/blocked.html")
+                                }
+                            }
+                            DnsCheckResult.SAFE -> {}
+                        }
+                    }
+                    
+                    urlStr.let {
+                        if (!it.startsWith("file:///android_asset/")) {
+                            inputText = it
+                        }
+                    }
+                    canGoBack = view?.canGoBack() == true
+                    canGoForward = view?.canGoForward() == true
+                }
+
+                private fun SafeSearchEnforce(url: String): String? {
+                    return SafeSearchEnforcer.enforce(url)
+                }
+
+                override fun onPageFinished(view: WebView?, urlStr: String?) {
+                    super.onPageFinished(view, urlStr)
+                    isLoading = false
+                    canGoBack = view?.canGoBack() == true
+                    canGoForward = view?.canGoForward() == true
+                }
+            }
+
+            webChromeClient = object : WebChromeClient() {
+                override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                    super.onProgressChanged(view, newProgress)
+                    progress = newProgress / 100f
+                }
+
+                override fun onShowFileChooser(
+                    webView: WebView?,
+                    filePathCallback: ValueCallback<Array<Uri>>?,
+                    fileChooserParams: FileChooserParams?
+                ): Boolean {
+                    activity.filePathCallback?.onReceiveValue(null)
+                    activity.filePathCallback = filePathCallback
+
+                    val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                        type = "*/*"
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                    }
+                    try {
+                        activity.fileChooserLauncher.launch(intent)
+                    } catch (e: Exception) {
+                        activity.filePathCallback?.onReceiveValue(null)
+                        activity.filePathCallback = null
+                        return false
+                    }
+                    return true
+                }
+            }
+
+            setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
+                try {
+                    val request = DownloadManager.Request(Uri.parse(url)).apply {
+                        setMimeType(mimetype)
+                        val cookies = android.webkit.CookieManager.getInstance().getCookie(url)
+                        addRequestHeader("cookie", cookies)
+                        addRequestHeader("User-Agent", userAgent)
+                        setDescription("Downloading file...")
+                        setTitle(URLUtil.guessFileName(url, contentDisposition, mimetype))
+                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        setDestinationInExternalPublicDir(
+                            Environment.DIRECTORY_DOWNLOADS,
+                            URLUtil.guessFileName(url, contentDisposition, mimetype)
+                        )
+                    }
+                    val dm = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
+                    dm.enqueue(request)
+                    Toast.makeText(context, "Download started...", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+    webViewRef = webView
+
+    var isUrlDetailsOpen by remember { mutableStateOf(false) }
+
+    val showWebView = activeScreen == ActiveScreen.BROWSER && currentUrl != "sanctum://home"
+
+    // Handle system back navigation
+    BackHandler(enabled = activeScreen != ActiveScreen.BROWSER || isUrlDetailsOpen || (canGoBack && showWebView)) {
+        when {
+            isUrlDetailsOpen -> isUrlDetailsOpen = false
+            activeScreen != ActiveScreen.BROWSER -> activeScreen = ActiveScreen.BROWSER
+            canGoBack && showWebView -> webViewRef?.goBack()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(EditorialPaper)
+        ) {
+            // Top Navigation Bar (Only active when browsing a webpage)
+            if (showWebView) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(EditorialPaper)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Elegant Shield Logo / Home trigger
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EditorialSurface)
+                            .clickable {
+                                currentUrl = "sanctum://home"
+                                inputText = ""
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "Home",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    // Address Bar
+                    TextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 44.dp)
+                            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(4.dp)),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = EditorialSurface,
+                            unfocusedContainerColor = EditorialSurface,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = EditorialInk,
+                            unfocusedTextColor = EditorialInk
+                        ),
+                        textStyle = TextStyle(
+                            fontFamily = Inter,
+                            fontSize = 13.sp,
+                            color = EditorialInk
+                        ),
+                        placeholder = {
+                            Text(
+                                text = "Search or type URL",
+                                color = EditorialMutedInk,
+                                fontFamily = Inter,
+                                fontSize = 13.sp
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_search),
+                                contentDescription = "Search",
+                                tint = EditorialMutedInk,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (inputText.isNotEmpty()) {
+                                IconButton(onClick = { inputText = "" }) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_clear),
+                                        contentDescription = "Clear",
+                                        tint = EditorialMutedInk,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Go
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onGo = {
+                                focusManager.clearFocus()
+                                var query = inputText.trim()
+                                if (query.isNotEmpty()) {
+                                    if (!query.contains(".") || query.contains(" ")) {
+                                        query = "https://www.google.com/search?q=" + URLEncoder.encode(query, "UTF-8") + "&safe=active"
+                                    } else if (!query.startsWith("http://") && !query.startsWith("https://")) {
+                                        query = "https://$query"
+                                    }
+                                    isLoading = true
+                                    progress = 0.1f
+                                    currentUrl = query
+                                }
+                            }
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Shield status indicator
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(EditorialSurface)
+                            .clickable { isUrlDetailsOpen = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_shield),
+                            contentDescription = "Shield",
+                            tint = EditorialForest,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Refresh Button
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(EditorialSurface)
+                            .clickable { webViewRef?.reload() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_refresh),
+                            contentDescription = "Refresh",
+                            tint = EditorialInk,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                // Understated loading line
+                AnimatedVisibility(visible = isLoading) {
+                    LinearProgressIndicator(
+                        progress = progress,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp),
+                        color = EditorialForest,
+                        trackColor = EditorialPaper
+                    )
+                }
+
+                // Separator line
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(EditorialBorder)
+                )
+            }
+
+            // Content Frame
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(EditorialPaper)
+            ) {
+                // WebView integration (always active to maintain state)
+                AndroidView(
+                    factory = { webView },
+                    update = { webViewInstance ->
+                        if (currentUrl == "sanctum://home") {
+                            if (webViewInstance.url != "about:blank") {
+                                webViewInstance.loadUrl("about:blank")
+                                webViewInstance.clearHistory()
+                            }
+                        } else if (webViewInstance.url != currentUrl) {
+                            webViewInstance.loadUrl(currentUrl)
+                        }
+                    },
+                    modifier = if (showWebView) Modifier.fillMaxSize() else Modifier.size(0.dp)
+                )
+
+                Crossfade(
+                    targetState = activeScreen,
+                    animationSpec = tween(durationMillis = 220),
+                    modifier = Modifier.fillMaxSize(),
+                    label = "screenSwitch"
+                ) { screen ->
+                    when (screen) {
+                        ActiveScreen.BROWSER -> {
+                            if (currentUrl == "sanctum://home") {
+                                HomeScreen(
+                                    onSearchSubmit = { query ->
+                                        var formattedQuery = query.trim()
+                                        if (formattedQuery.isNotEmpty()) {
+                                            if (!formattedQuery.contains(".") || formattedQuery.contains(" ")) {
+                                                formattedQuery = "https://www.google.com/search?q=" + URLEncoder.encode(formattedQuery, "UTF-8") + "&safe=active"
+                                            } else if (!formattedQuery.startsWith("http://") && !formattedQuery.startsWith("https://")) {
+                                                formattedQuery = "https://$formattedQuery"
+                                            }
+                                            isLoading = true
+                                            progress = 0.1f
+                                            currentUrl = formattedQuery
+                                            inputText = formattedQuery
+                                        }
+                                    },
+                                    onProfileClick = { activeScreen = ActiveScreen.SETTINGS }
+                                )
+                            }
+                        }
+                        ActiveScreen.SAFETY_SHIELD -> {
+                            SafetyShieldScreen(
+                                context = context,
+                                adBlocking = adBlocking,
+                                onAdBlockingChange = { adBlocking = it },
+                                antiFingerprint = antiFingerprint,
+                                onAntiFingerprintChange = { antiFingerprint = it },
+                                httpsOnly = httpsOnly,
+                                onHttpsOnlyChange = { httpsOnly = it },
+                                shieldMode = shieldMode,
+                                onShieldModeChange = { shieldMode = it }
+                            )
+                        }
+                        ActiveScreen.SETTINGS -> {
+                            SettingsScreen(
+                                context = context,
+                                familyMode = familyMode,
+                                onFamilyModeChange = { familyMode = it },
+                                onBack = { activeScreen = ActiveScreen.BROWSER }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Bottom Navigation Bar animated states
+            val backTint by animateColorAsState(
+                targetValue = if (showWebView && canGoBack) EditorialInk else EditorialMutedInk.copy(alpha = 0.3f),
+                animationSpec = tween(durationMillis = 150),
+                label = "backTint"
+            )
+            val forwardTint by animateColorAsState(
+                targetValue = if (showWebView && canGoForward) EditorialInk else EditorialMutedInk.copy(alpha = 0.3f),
+                animationSpec = tween(durationMillis = 150),
+                label = "forwardTint"
+            )
+            val searchTint by animateColorAsState(
+                targetValue = if (activeScreen == ActiveScreen.BROWSER) EditorialForest else EditorialMutedInk.copy(alpha = 0.5f),
+                animationSpec = tween(durationMillis = 150),
+                label = "searchTint"
+            )
+            val shieldTint by animateColorAsState(
+                targetValue = if (activeScreen == ActiveScreen.SAFETY_SHIELD) EditorialForest else EditorialMutedInk.copy(alpha = 0.5f),
+                animationSpec = tween(durationMillis = 150),
+                label = "shieldTint"
+            )
+            val settingsTint by animateColorAsState(
+                targetValue = if (activeScreen == ActiveScreen.SETTINGS) EditorialForest else EditorialMutedInk.copy(alpha = 0.5f),
+                animationSpec = tween(durationMillis = 150),
+                label = "settingsTint"
+            )
+
+            val searchScale by animateFloatAsState(
+                targetValue = if (activeScreen == ActiveScreen.BROWSER) 1.15f else 1.0f,
+                animationSpec = tween(durationMillis = 150),
+                label = "searchScale"
+            )
+            val shieldScale by animateFloatAsState(
+                targetValue = if (activeScreen == ActiveScreen.SAFETY_SHIELD) 1.15f else 1.0f,
+                animationSpec = tween(durationMillis = 150),
+                label = "shieldScale"
+            )
+            val settingsScale by animateFloatAsState(
+                targetValue = if (activeScreen == ActiveScreen.SETTINGS) 1.15f else 1.0f,
+                animationSpec = tween(durationMillis = 150),
+                label = "settingsScale"
+            )
+
+            // Bottom Navigation Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(Color.White)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Tab 1: Back Chevron
+                IconButton(
+                    onClick = { webViewRef?.goBack() },
+                    enabled = showWebView && canGoBack,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_back),
+                        contentDescription = "Back",
+                        tint = backTint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Tab 2: Forward Chevron
+                IconButton(
+                    onClick = { webViewRef?.goForward() },
+                    enabled = showWebView && canGoForward,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_forward),
+                        contentDescription = "Forward",
+                        tint = forwardTint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Tab 3: Search / Home
+                IconButton(
+                    onClick = {
+                        activeScreen = ActiveScreen.BROWSER
+                        currentUrl = "sanctum://home"
+                        inputText = ""
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_search),
+                        contentDescription = "Search",
+                        tint = searchTint,
+                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = searchScale, scaleY = searchScale)
+                    )
+                }
+
+                // Tab 4: Safety Shield / Tabs
+                IconButton(
+                    onClick = { activeScreen = ActiveScreen.SAFETY_SHIELD },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_tabs),
+                        contentDescription = "Safety Shield",
+                        tint = shieldTint,
+                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = shieldScale, scaleY = shieldScale)
+                    )
+                }
+
+                // Tab 5: Settings / Menu dots
+                IconButton(
+                    onClick = { activeScreen = ActiveScreen.SETTINGS },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_menu_dots),
+                        contentDescription = "Settings",
+                        tint = settingsTint,
+                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = settingsScale, scaleY = settingsScale)
+                    )
+                }
+            }
+        }
+
+        // Shield Details dialog
+        AnimatedVisibility(
+            visible = isUrlDetailsOpen,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(animationSpec = tween(300)),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(animationSpec = tween(250))
+        ) {
+            UrlDetailsDialog(context = context, urlStr = currentUrl, onClose = { isUrlDetailsOpen = false })
+        }
+    }
+}
+
+enum class ActiveScreen {
+    BROWSER,
+    SAFETY_SHIELD,
+    SETTINGS
+}
+
+enum class ShieldMode {
+    STANDARD,
+    STRICT,
+    STEALTH
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    onSearchSubmit: (String) -> Unit,
+    onProfileClick: () -> Unit
+) {
+    var homeSearchText by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EditorialPaper)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Header Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "Sanctum Logo",
+                    modifier = Modifier.size(30.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sanctum",
+                    color = EditorialInk,
+                    fontSize = 20.sp,
+                    fontFamily = Inter,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            IconButton(
+                onClick = onProfileClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_profile),
+                    contentDescription = "Profile",
+                    tint = EditorialInk,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Search Bar Capsule
+        TextField(
+            value = homeSearchText,
+            onValueChange = { homeSearchText = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 50.dp)
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(25.dp))
+                .border(1.dp, EditorialBorder, RoundedCornerShape(25.dp))
+                .clip(RoundedCornerShape(25.dp)),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = EditorialInk,
+                unfocusedTextColor = EditorialInk
+            ),
+            textStyle = TextStyle(
+                fontFamily = Inter,
+                fontSize = 14.sp
+            ),
+            placeholder = {
+                Text(
+                    text = "Search or enter website",
+                    color = EditorialMutedInk.copy(alpha = 0.7f),
+                    fontFamily = Inter,
+                    fontSize = 14.sp
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_search),
+                    contentDescription = "Search",
+                    tint = EditorialMutedInk,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Search
+            ),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    focusManager.clearFocus()
+                    if (homeSearchText.trim().isNotEmpty()) {
+                        onSearchSubmit(homeSearchText)
+                    }
+                }
+            ),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Quick Links Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Quick Links",
+                color = EditorialInk,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter,
+                letterSpacing = (-0.2).sp
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { /* edit links */ }
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_edit),
+                    contentDescription = "Edit",
+                    tint = EditorialMutedInk,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Edit",
+                    color = EditorialMutedInk,
+                    fontSize = 12.sp,
+                    fontFamily = Inter
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Quick Links Row (Globe, Mail, Clock, Star)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val quickLinks = listOf(
+                Triple("Web", R.drawable.ic_globe, "https://google.com"),
+                Triple("Inbox", R.drawable.ic_mail, "https://mail.google.com"),
+                Triple("Recents", R.drawable.ic_clock, "sanctum://recents"),
+                Triple("Saved", R.drawable.ic_star, "sanctum://saved")
+            )
+
+            quickLinks.forEach { link ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onSearchSubmit(link.third) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(1.dp, EditorialBorder, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = link.second),
+                            contentDescription = link.first,
+                            tint = EditorialForest,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = link.first,
+                        color = EditorialInk,
+                        fontSize = 12.sp,
+                        fontFamily = Inter
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Discover Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Discover",
+                color = EditorialInk,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter,
+                letterSpacing = (-0.2).sp
+            )
+            Icon(
+                painter = painterResource(id = R.drawable.ic_sparkles),
+                contentDescription = "Discover",
+                tint = EditorialMutedInk,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Discover Card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+        ) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.discover_forest_bg),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            // Overlay Gradient for text readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                            startY = 100f
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "ENVIRONMENT",
+                            color = Color.White,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = Inter,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.4f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "5 MIN READ",
+                            color = Color.White,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = Inter,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "The Quiet Power of Sanctum Spaces",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontFamily = Inter,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
+                    lineHeight = 22.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "How intentional digital environments influence our cognitive well-being...",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    fontFamily = Inter,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Trending Now Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Text(
+                text = "Trending Now",
+                color = EditorialInk,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter,
+                letterSpacing = (-0.2).sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Trending List inside a white rounded card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(12.dp))
+        ) {
+            TrendingListItem(
+                title = "Future of Minimalist Architecture",
+                source = "Design Digest • 2h ago",
+                onClick = { onSearchSubmit("https://en.wikipedia.org/wiki/Minimalist_architecture") }
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            TrendingListItem(
+                title = "Digital Detox: A Practical Guide",
+                source = "Wellness Monthly • 4h ago",
+                onClick = { onSearchSubmit("https://en.wikipedia.org/wiki/Digital_detox") }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+fun TrendingListItem(
+    title: String,
+    source: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(EditorialSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_globe),
+                    contentDescription = null,
+                    tint = EditorialForest,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = title,
+                    color = EditorialInk,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = source,
+                    color = EditorialMutedInk,
+                    fontSize = 11.sp,
+                    fontFamily = Inter
+                )
+            }
+        }
+        Icon(
+            painter = painterResource(id = R.drawable.ic_arrow_right),
+            contentDescription = "Chevron",
+            tint = EditorialMutedInk.copy(alpha = 0.5f),
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+private fun getBlockedResponse(context: android.content.Context): WebResourceResponse {
+    return try {
+        val inputStream = context.assets.open("blocked.html")
+        WebResourceResponse("text/html", "UTF-8", inputStream)
+    } catch (e: Exception) {
+        WebResourceResponse("text/html", "UTF-8", "Access Denied by Sanctum.".byteInputStream())
+    }
+}
+
+private fun getErrorResponse(): WebResourceResponse {
+    val errorHtml = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Security Error</title>
+            <style>
+                body { background-color: #FCFCFA; color: #1E1E1E; font-family: serif; text-align: center; padding: 50px; }
+                .box { background: #F6F6F2; border: 1px solid #E6E6E1; padding: 30px; border-radius: 4px; display: inline-block; max-width: 400px; }
+                h1 { color: #2E4035; font-family: serif; font-size: 20px; margin-bottom: 12px; }
+                p { color: #6B6B67; font-family: sans-serif; font-size: 13px; line-height: 1.6; }
+                button { background: #2E4035; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h1>Security Shield Active</h1>
+                <p>Verification failed due to a network disruption. To protect your browsing environment, page load has been restricted.</p>
+                <button onclick="location.reload();">Retry Connection</button>
+            </div>
+        </body>
+        </html>
+    """.trimIndent()
+    return WebResourceResponse("text/html", "UTF-8", errorHtml.byteInputStream())
+}
+
+@Composable
+fun SafetyShieldScreen(
+    context: android.content.Context,
+    adBlocking: Boolean,
+    onAdBlockingChange: (Boolean) -> Unit,
+    antiFingerprint: Boolean,
+    onAntiFingerprintChange: (Boolean) -> Unit,
+    httpsOnly: Boolean,
+    onHttpsOnlyChange: (Boolean) -> Unit,
+    shieldMode: ShieldMode,
+    onShieldModeChange: (ShieldMode) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EditorialPaper)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    ) {
+        // Header Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "Sanctum Logo",
+                    modifier = Modifier.size(30.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sanctum",
+                    color = EditorialInk,
+                    fontSize = 20.sp,
+                    fontFamily = Inter,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Icon(
+                painter = painterResource(id = R.drawable.ic_profile),
+                contentDescription = "Profile",
+                tint = EditorialInk,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Screen Title
+        Text(
+            text = "Safety Shield",
+            color = EditorialInk,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter,
+            letterSpacing = (-0.6).sp,
+            lineHeight = 34.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Your browsing environment is protected by Sanctum's advanced security protocols.",
+            color = EditorialMutedInk,
+            fontSize = 12.sp,
+            fontFamily = Inter,
+            lineHeight = 17.sp
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Protection Report Card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "STATUS",
+                        color = EditorialMutedInk,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = Inter,
+                        letterSpacing = 1.5.sp
+                    )
+                    Text(
+                        text = "Protection Report",
+                        color = EditorialInk,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = Inter,
+                        letterSpacing = (-0.2).sp
+                    )
+                }
+                // Active Now badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFE8F5E9))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                    val pulseAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.4f,
+                        targetValue = 1.0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 1200),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "pulseAlpha"
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(EditorialForest.copy(alpha = pulseAlpha))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Active Now",
+                            color = EditorialForest,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = Inter
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Stats grid (2 columns, 2 rows)
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StatItem(label = "Trackers Blocked", value = "1,284", modifier = Modifier.weight(1f))
+                StatItem(label = "Privacy Alerts", value = "0", modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StatItem(label = "Data Saved", value = "42MB", modifier = Modifier.weight(1f))
+                StatItem(label = "Threat Score", value = "Low", valueColor = EditorialForest, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // View Detailed Insights box
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(EditorialSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(EditorialSurface, EditorialForest.copy(alpha = 0.15f))
+                            )
+                        )
+                )
+                // Insights button
+                Box(
+                    modifier = Modifier
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.White)
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(20.dp))
+                        .clickable { /* action */ }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "View Detailed Insights",
+                        color = EditorialInk,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = Inter
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Toggle rows card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+        ) {
+            ShieldToggleRow(
+                title = "Ad Blocking",
+                description = "Prevent intrusive advertisements and pop-ups from loading during your session.",
+                checked = adBlocking,
+                onCheckedChange = onAdBlockingChange
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ShieldToggleRow(
+                title = "Anti-Fingerprint",
+                description = "Obfuscate your browser signature to prevent cross-site tracking and profiling.",
+                checked = antiFingerprint,
+                onCheckedChange = onAntiFingerprintChange
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ShieldToggleRow(
+                title = "HTTPS Only",
+                description = "Automatically upgrade connections to secure HTTPS whenever possible.",
+                checked = httpsOnly,
+                onCheckedChange = onHttpsOnlyChange
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Shield Mode Section
+        Text(
+            text = "Shield Mode",
+            color = EditorialInk,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = Inter,
+            letterSpacing = (-0.2).sp,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+        ) {
+            ShieldModeItem(
+                mode = ShieldMode.STANDARD,
+                title = "Standard",
+                description = "Balanced protection for daily browsing without breaking web features.",
+                selected = shieldMode == ShieldMode.STANDARD,
+                onClick = { onShieldModeChange(ShieldMode.STANDARD) }
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ShieldModeItem(
+                mode = ShieldMode.STRICT,
+                title = "Strict",
+                description = "Aggressive protection level. Blocks most scripts and may affect some site functionality.",
+                selected = shieldMode == ShieldMode.STRICT,
+                onClick = { onShieldModeChange(ShieldMode.STRICT) }
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ShieldModeItem(
+                mode = ShieldMode.STEALTH,
+                title = "Stealth",
+                description = "Maximum isolation. Routes traffic through encrypted tunnels and strips all metadata.",
+                selected = shieldMode == ShieldMode.STEALTH,
+                onClick = { onShieldModeChange(ShieldMode.STEALTH) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Sanctuary AI Card with circular ring background
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(EditorialForest, Color(0xFF1B2A20))
+                    )
+                )
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = Color(0xFF81C784).copy(alpha = 0.15f),
+                    radius = 120.dp.toPx(),
+                    center = center.copy(x = center.x * 1.3f, y = center.y * 1.1f)
+                )
+                drawCircle(
+                    color = Color(0xFF81C784).copy(alpha = 0.08f),
+                    radius = 180.dp.toPx(),
+                    center = center.copy(x = center.x * 1.3f, y = center.y * 1.1f)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "SANCTUM AI",
+                    color = Color(0xFF81C784),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Your digital perimeter is monitored by advanced heuristics.",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontFamily = Inter,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+fun StatItem(
+    label: String,
+    value: String,
+    valueColor: Color = EditorialInk,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            color = EditorialMutedInk,
+            fontSize = 11.sp,
+            fontFamily = Inter
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            color = valueColor,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter
+        )
+    }
+}
+
+@Composable
+fun ShieldToggleRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = EditorialInk,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                color = EditorialMutedInk,
+                fontSize = 11.sp,
+                fontFamily = Inter,
+                lineHeight = 16.sp
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = EditorialForest,
+                uncheckedThumbColor = EditorialMutedInk,
+                uncheckedTrackColor = EditorialBorder
+            )
+        )
+    }
+}
+
+@Composable
+fun ShieldModeItem(
+    mode: ShieldMode,
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = EditorialInk,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                color = EditorialMutedInk,
+                fontSize = 11.sp,
+                fontFamily = Inter,
+                lineHeight = 16.sp
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .border(2.dp, if (selected) EditorialForest else EditorialBorder, CircleShape)
+                .background(Color.White)
+                .padding(4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(EditorialForest)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(
+    context: android.content.Context,
+    familyMode: Boolean,
+    onFamilyModeChange: (Boolean) -> Unit,
+    onBack: () -> Unit
+) {
+    var newCustomDomain by remember { mutableStateOf("") }
+    var customDomainsList by remember { mutableStateOf(BlocklistManager.getCustomDomains(context)) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EditorialPaper)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    ) {
+        // Header Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "Sanctum Logo",
+                    modifier = Modifier.size(30.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sanctum",
+                    color = EditorialInk,
+                    fontSize = 20.sp,
+                    fontFamily = Inter,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Icon(
+                painter = painterResource(id = R.drawable.ic_profile),
+                contentDescription = "Profile",
+                tint = EditorialInk,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Screen Title
+        Text(
+            text = "Settings",
+            color = EditorialInk,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter,
+            letterSpacing = (-0.6).sp,
+            lineHeight = 34.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Configure your private browsing experience.",
+            color = EditorialMutedInk,
+            fontSize = 12.sp,
+            fontFamily = Inter,
+            lineHeight = 17.sp
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Family Mode Card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(EditorialSurface),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_shield),
+                            contentDescription = null,
+                            tint = EditorialForest,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Family Mode",
+                            color = EditorialInk,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = Inter
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Block adult content & trackers",
+                            color = EditorialMutedInk,
+                            fontSize = 11.sp,
+                            fontFamily = Inter
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Switch(
+                    checked = familyMode,
+                    onCheckedChange = onFamilyModeChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = EditorialForest,
+                        uncheckedThumbColor = EditorialMutedInk,
+                        uncheckedTrackColor = EditorialBorder
+                    )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // GENERAL Section
+        Text(
+            text = "GENERAL",
+            color = EditorialMutedInk,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+        ) {
+            SettingsNavigationRow(
+                title = "Default Search Engine",
+                value = "DuckDuckGo",
+                onClick = {}
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            SettingsNavigationRow(
+                title = "Appearance",
+                value = "System",
+                onClick = {}
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // PRIVACY & SECURITY Section
+        Text(
+            text = "PRIVACY & SECURITY",
+            color = EditorialMutedInk,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+        ) {
+            SettingsNavigationRow(
+                title = "Passwords & Autofill",
+                onClick = {}
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            SettingsNavigationRow(
+                title = "Ad & Tracker Blocker",
+                value = "Strict",
+                onClick = {}
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            SettingsNavigationRow(
+                title = "Clear Browsing Data",
+                onClick = {}
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // USER BLOCKLIST (CUSTOM) Section
+        Text(
+            text = "USER BLOCKLIST (CUSTOM)",
+            color = EditorialMutedInk,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Add Custom Blocked Domain",
+                color = EditorialInk,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = newCustomDomain,
+                    onValueChange = { newCustomDomain = it },
+                    placeholder = { Text("e.g. facebook.com", fontSize = 12.sp, fontStyle = FontStyle.Italic) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(8.dp)),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = EditorialSurface,
+                        unfocusedContainerColor = EditorialSurface,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = EditorialInk,
+                        unfocusedTextColor = EditorialInk
+                    ),
+                    textStyle = TextStyle(fontSize = 13.sp),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(EditorialForest)
+                        .clickable {
+                            if (BlocklistManager.addCustomDomain(context, newCustomDomain)) {
+                                customDomainsList = BlocklistManager.getCustomDomains(context)
+                                newCustomDomain = ""
+                                Toast.makeText(context, "Domain added successfully", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Invalid domain name", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text(text = "Add", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            if (customDomainsList.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Your Custom Blocked Sites:",
+                    color = EditorialMutedInk,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Column {
+                    customDomainsList.forEach { domain ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = domain, color = EditorialInk, fontSize = 13.sp, fontFamily = Inter)
+                            Text(
+                                text = "Remove",
+                                color = Color.Red.copy(alpha = 0.7f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickable {
+                                    if (BlocklistManager.removeCustomDomain(context, domain)) {
+                                        customDomainsList = BlocklistManager.getCustomDomains(context)
+                                        Toast.makeText(context, "Domain removed", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                        }
+                        Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Center Logo and Version Card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = null,
+                modifier = Modifier.size(72.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Sanctum Browser",
+                color = EditorialInk,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter
+            )
+            Text(
+                text = "Version 2.4.0 (Stable Build)",
+                color = EditorialMutedInk,
+                fontSize = 11.sp,
+                fontFamily = Inter
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EditorialSurface)
+                        .clickable {}
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(text = "Terms of Service", color = EditorialInk, fontSize = 11.sp, fontFamily = Inter)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EditorialSurface)
+                        .clickable {}
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(text = "Privacy Policy", color = EditorialInk, fontSize = 11.sp, fontFamily = Inter)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Footer Text
+        Text(
+            text = "CRAFTED WITH PRECISION FOR PRIVATE LIVES.",
+            color = EditorialMutedInk.copy(alpha = 0.5f),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Inter,
+            letterSpacing = 1.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(40.dp))
+    }
+}
+
+@Composable
+fun SettingsNavigationRow(
+    title: String,
+    value: String? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            color = EditorialInk,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = Inter
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (value != null) {
+                Text(
+                    text = value,
+                    color = EditorialMutedInk,
+                    fontSize = 13.sp,
+                    fontFamily = Inter,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+            Icon(
+                painter = painterResource(id = R.drawable.ic_arrow_right),
+                contentDescription = null,
+                tint = EditorialMutedInk.copy(alpha = 0.5f),
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun UrlDetailsDialog(
+    context: android.content.Context,
+    urlStr: String,
+    onClose: () -> Unit
+) {
+    val cleanUrl = urlStr.replace("about:blank", "Home Screen")
+    val domain = try {
+        java.net.URI(urlStr).host ?: cleanUrl
+    } catch (e: Exception) {
+        cleanUrl
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+            .clickable(onClick = onClose),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                .background(EditorialPaper)
+                .clickable(enabled = false, onClick = {}) // prevent close click inside
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_shield),
+                        contentDescription = null,
+                        tint = EditorialForest,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Security Shield Active",
+                        color = EditorialForest,
+                        fontSize = 16.sp,
+                        fontFamily = Inter,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.2).sp
+                    )
+                }
+                Text(
+                    text = "Close",
+                    color = EditorialMutedInk,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable(onClick = onClose)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Domain indicator
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(EditorialSurface)
+                    .padding(14.dp)
+            ) {
+                Text(text = "DOMAIN", color = EditorialMutedInk, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(text = domain ?: "Unknown", color = EditorialInk, fontSize = 13.sp, fontFamily = Inter)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = "FULL URL", color = EditorialMutedInk, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(text = cleanUrl, color = EditorialInk, fontSize = 11.sp, fontFamily = Inter)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Action: Block site
+            if (urlStr.startsWith("http")) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(EditorialSurface)
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(8.dp))
+                        .clickable {
+                            if (domain != null && BlocklistManager.addCustomDomain(context, domain)) {
+                                Toast.makeText(context, "$domain added to blocklist", Toast.LENGTH_SHORT).show()
+                                onClose()
+                            }
+                        }
+                        .padding(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_shield),
+                            contentDescription = null,
+                            tint = Color.Red.copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Block this domain ($domain)", color = EditorialInk, fontSize = 12.sp)
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
