@@ -341,6 +341,18 @@ fun BrowserScreen(activity: MainActivity) {
 
                 override fun onPageFinished(view: WebView?, urlStr: String?) {
 
+                    // Inject Custom CSS to hide DuckDuckGo branding and DuckAI
+                    if (urlStr?.contains("duckduckgo.com") == true) {
+                        val js = "(function() {" +
+                                "var style = document.createElement('style');" +
+                                "style.innerHTML = '" +
+                                ".header__logo-wrap, .logo-wrap--home, .header__logo, a[href=\"/\"] { display: none !important; visibility: hidden !important; opacity: 0 !important; width: 0 !important; }" +
+                                ".duckchat-button, .js-duckchat-chat-btn, .duckchat-header, .js-duckchat-prompts, .duckai-btn { display: none !important; }" +
+                                ".badge-link, .js-badge-main-msg, .js-install-prompt, .install-prompt, .app-smart-banner { display: none !important; }" +
+                                "'; document.head.appendChild(style);" +
+                                "})();"
+                        view?.evaluateJavascript(js, null)
+                    }
                     super.onPageFinished(view, urlStr)
                     isLoading = false
                     canGoBack = view?.canGoBack() == true
