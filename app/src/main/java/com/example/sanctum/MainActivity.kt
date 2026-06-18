@@ -670,6 +670,7 @@ fun BrowserScreen(activity: MainActivity) {
                         ActiveScreen.BROWSER -> {
                             if (currentUrl == "sanctum://home") {
                                 HomeScreen(
+                                    totalBlockedCount = totalBlockedCount,
                                     onSearchSubmit = { query ->
                                         var formattedQuery = query.trim()
                                         if (formattedQuery.isNotEmpty()) {
@@ -941,6 +942,7 @@ enum class ShieldMode {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    totalBlockedCount: Int,
     onSearchSubmit: (String) -> Unit,
     onProfileClick: () -> Unit,
     onShieldClick: () -> Unit,
