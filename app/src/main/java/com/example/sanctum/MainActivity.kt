@@ -221,6 +221,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
         if (!initialUrl.isNullOrEmpty()) {
             currentUrl = initialUrl
             activeTab.url.value = initialUrl
+            activeScreen = ActiveScreen.BROWSER
         }
     }
     
@@ -252,7 +253,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     val focusManager = LocalFocusManager.current
 
     // Screen State
-    var activeScreen by remember { mutableStateOf(ActiveScreen.BROWSER) }
+    var activeScreen by remember { mutableStateOf(ActiveScreen.SPLASH) }
 
     // Shield Features State
     val prefs = LocalContext.current.getSharedPreferences("sanctum_prefs", android.content.Context.MODE_PRIVATE)
@@ -940,7 +941,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
 }
 
 enum class ActiveScreen {
-    BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH
+    SPLASH, BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH
 }
 
 enum class ShieldMode {
@@ -2700,5 +2701,25 @@ fun TabOverviewScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun SplashScreen(onSplashComplete: () -> Unit) {
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1200)
+        onSplashComplete()
+    }
+    androidx.compose.foundation.layout.Box(
+        modifier = androidx.compose.ui.Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(0xFFFFFFFF)),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_sanctum_logo),
+            contentDescription = "Splash Logo",
+            modifier = androidx.compose.ui.Modifier.size(160.dp)
+        )
     }
 }
