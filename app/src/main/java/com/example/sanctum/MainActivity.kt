@@ -177,6 +177,8 @@ class MainActivity : ComponentActivity() {
             BlocklistManager.init(applicationContext)
         }
 
+        val intentUrl = intent?.dataString
+
         setContent {
             MaterialTheme(
                 colorScheme = lightColorScheme(
@@ -192,7 +194,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    BrowserScreen(activity = this@MainActivity)
+                    BrowserScreen(activity = this@MainActivity, initialUrl = intentUrl)
                 }
             }
         }
@@ -201,7 +203,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrowserScreen(activity: MainActivity) {
+fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     val context = LocalContext.current
     val tabManager = remember { 
         TabManager().apply { 
@@ -213,6 +215,14 @@ fun BrowserScreen(activity: MainActivity) {
     
     var currentUrl by activeTab.url
     var inputText by remember { mutableStateOf("") }
+    
+    // Deep Link Interceptor
+    LaunchedEffect(initialUrl) {
+        if (!initialUrl.isNullOrEmpty()) {
+            currentUrl = initialUrl
+            activeTab.url.value = initialUrl
+        }
+    }
     
     LaunchedEffect(tabManager.tabs.size, activeTab.url.value, tabManager.activeTabIndex.value) {
         tabManager.saveState(context)
