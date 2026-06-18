@@ -61,6 +61,18 @@ object SearchEngine {
                 if (url.startsWith("//")) {
                     url = "https:$url"
                 }
+                
+                // Decode DuckDuckGo privacy wrapper
+                if (url.contains("uddg=")) {
+                    try {
+                        val uri = android.net.Uri.parse(url)
+                        val uddg = uri.getQueryParameter("uddg")
+                        if (!uddg.isNullOrEmpty()) {
+                            url = java.net.URLDecoder.decode(uddg, "UTF-8")
+                        }
+                    } catch (e: Exception) {}
+                }
+                
                 val snippet = snippetElement?.text() ?: ""
                 
                 // Only add valid results

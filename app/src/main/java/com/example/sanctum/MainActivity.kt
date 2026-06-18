@@ -735,6 +735,21 @@ fun BrowserScreen(activity: MainActivity) {
                                             isNativeSearchPaging = false
                                         }
                                     }
+                                },
+                                onTabClick = { tabName ->
+                                    var encoded = ""
+                                    try {
+                                        encoded = java.net.URLEncoder.encode(currentNativeQuery, "UTF-8")
+                                    } catch (e: Exception) {}
+                                    val iaParam = when (tabName) {
+                                        "Images" -> "images"
+                                        "Videos" -> "videos"
+                                        "News" -> "news"
+                                        "Maps" -> "maps"
+                                        else -> "web"
+                                    }
+                                    activeTab.url.value = "https://duckduckgo.com/?q=$encoded&ia=$iaParam"
+                                    activeScreen = ActiveScreen.BROWSER
                                 }
                             )
                         }

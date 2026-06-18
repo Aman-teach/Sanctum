@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +27,8 @@ fun NativeSearchScreen(
     hasNextPage: Boolean,
     isPaging: Boolean,
     onResultClick: (String) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    onTabClick: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -40,7 +43,40 @@ fun NativeSearchScreen(
             color = EditorialMutedInk,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Navigation Tabs
+        ScrollableTabRow(
+            selectedTabIndex = 0,
+            containerColor = Color.Transparent,
+            contentColor = Color(0xFF1A73E8),
+            edgePadding = 16.dp,
+            divider = {},
+            indicator = { tabPositions ->
+                SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(tabPositions[0]),
+                    color = Color(0xFF1A73E8)
+                )
+            }
+        ) {
+            val tabs = listOf("All", "Images", "Videos", "News", "Maps")
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = index == 0,
+                    onClick = { if (index != 0) onTabClick(title) },
+                    text = { 
+                        Text(
+                            text = title, 
+                            fontFamily = Inter, 
+                            fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (index == 0) Color(0xFF1A73E8) else EditorialMutedInk
+                        ) 
+                    }
+                )
+            }
+        }
+        
+        HorizontalDivider(color = Color(0xFFE8EAED), thickness = 1.dp)
 
         if (isLoading && results.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -54,10 +90,21 @@ fun NativeSearchScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 48.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(results) { result ->
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                itemsIndexed(results) { index, result ->
                     SearchResultCard(result, onResultClick)
+                    if (index < results.size - 1) {
+                        HorizontalDivider(
+                            color = Color(0xFFE8EAED), 
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                    }
                 }
                 
                 if (hasNextPage) {
@@ -65,7 +112,7 @@ fun NativeSearchScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 16.dp),
+                                .padding(vertical = 24.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             if (isPaging) {
@@ -95,7 +142,7 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick(result.url) }
-            .padding(vertical = 8.dp, horizontal = 4.dp)
+            .padding(vertical = 4.dp, horizontal = 4.dp)
     ) {
         // Breadcrumb URL
         Text(
