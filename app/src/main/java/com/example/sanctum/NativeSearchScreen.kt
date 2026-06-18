@@ -1,14 +1,12 @@
 package com.example.sanctum
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,46 +22,66 @@ fun NativeSearchScreen(
     query: String,
     results: List<SearchResult>,
     isLoading: Boolean,
-    onResultClick: (String) -> Unit
+    hasNextPage: Boolean,
+    isPaging: Boolean,
+    onResultClick: (String) -> Unit,
+    onLoadMore: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(EditorialPaper) // Using the slate background
-            .padding(horizontal = 16.dp)
+            .background(Color(0xFFF8F9FA)) // Google-like super light gray background
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-
         Text(
-            text = "Search Results for \"$query\"",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
+            text = "Results for \"$query\"",
+            fontSize = 18.sp,
             fontFamily = Inter,
-            color = EditorialInk
+            color = EditorialMutedInk,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (isLoading) {
+        if (isLoading && results.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = SecondaryAccent)
+                CircularProgressIndicator(color = Color(0xFF1A73E8)) // Google Pro Blue
             }
         } else if (results.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No results found.",
-                    fontFamily = Inter,
-                    color = EditorialMutedInk
-                )
+                Text("No results found.", fontFamily = Inter, color = EditorialMutedInk)
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 48.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 items(results) { result ->
                     SearchResultCard(result, onResultClick)
+                }
+                
+                if (hasNextPage) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isPaging) {
+                                CircularProgressIndicator(color = Color(0xFF1A73E8))
+                            } else {
+                                Button(
+                                    onClick = onLoadMore,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A73E8)),
+                                    shape = RoundedCornerShape(24.dp),
+                                    modifier = Modifier.height(48.dp)
+                                ) {
+                                    Text("Load more results", fontFamily = Inter, fontWeight = FontWeight.Medium, color = Color.White)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -72,43 +90,45 @@ fun NativeSearchScreen(
 
 @Composable
 fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(EditorialSurface)
-            .border(1.dp, EditorialBorder, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable { onClick(result.url) }
-            .padding(16.dp)
+            .padding(vertical = 8.dp, horizontal = 4.dp)
     ) {
-        Column {
-            Text(
-                text = result.title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = Inter,
-                color = EditorialInk,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = result.url,
-                fontSize = 12.sp,
-                fontFamily = Inter,
-                color = SecondaryAccent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = result.snippet,
-                fontSize = 14.sp,
-                fontFamily = Inter,
-                color = EditorialMutedInk,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        // Breadcrumb URL
+        Text(
+            text = result.url.replace("https://", "").replace("http://", "").substringBefore("/"),
+            fontSize = 12.sp,
+            fontFamily = Inter,
+            color = Color(0xFF202124), // Google Dark
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Title (Pro Blue)
+        Text(
+            text = result.title,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = Inter,
+            color = Color(0xFF1A0DAB), // Google Title Blue
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Snippet
+        Text(
+            text = result.snippet,
+            fontSize = 14.sp,
+            fontFamily = Inter,
+            color = Color(0xFF4D5156), // Google Snippet Gray
+            lineHeight = 20.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

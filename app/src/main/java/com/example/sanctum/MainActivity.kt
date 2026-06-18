@@ -252,7 +252,9 @@ fun BrowserScreen(activity: MainActivity) {
     
     // Native Search State
     var nativeSearchResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
+    var nativeSearchTokens by remember { mutableStateOf<Map<String, String>?>(null) }
     var isNativeSearchLoading by remember { mutableStateOf(false) }
+    var isNativeSearchPaging by remember { mutableStateOf(false) }
     var currentNativeQuery by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
@@ -550,7 +552,9 @@ fun BrowserScreen(activity: MainActivity) {
                                         activeScreen = ActiveScreen.NATIVE_SEARCH
                                         isNativeSearchLoading = true
                                         coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                                            nativeSearchResults = SearchEngine.performSearch(query)
+                                            val response = SearchEngine.performSearch(query)
+                                            nativeSearchResults = response.results
+                                            nativeSearchTokens = response.nextTokens
                                             isNativeSearchLoading = false
                                         }
                                         return@KeyboardActions
@@ -667,7 +671,9 @@ fun BrowserScreen(activity: MainActivity) {
                                                 activeScreen = ActiveScreen.NATIVE_SEARCH
                                                 isNativeSearchLoading = true
                                                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                                                    nativeSearchResults = SearchEngine.performSearch(formattedQuery)
+                                                    val response = SearchEngine.performSearch(formattedQuery)
+                                                    nativeSearchResults = response.results
+                                                    nativeSearchTokens = response.nextTokens
                                                     isNativeSearchLoading = false
                                                 }
                                             } else {
@@ -713,9 +719,22 @@ fun BrowserScreen(activity: MainActivity) {
                                 query = currentNativeQuery,
                                 results = nativeSearchResults,
                                 isLoading = isNativeSearchLoading,
+                                hasNextPage = nativeSearchTokens != null,
+                                isPaging = isNativeSearchPaging,
                                 onResultClick = { url ->
                                     activeTab.url.value = url
                                     activeScreen = ActiveScreen.BROWSER
+                                },
+                                onLoadMore = {
+                                    nativeSearchTokens?.let { tokens ->
+                                        isNativeSearchPaging = true
+                                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                            val response = SearchEngine.loadNextPage(tokens)
+                                            nativeSearchResults = nativeSearchResults + response.results
+                                            nativeSearchTokens = response.nextTokens
+                                            isNativeSearchPaging = false
+                                        }
+                                    }
                                 }
                             )
                         }
