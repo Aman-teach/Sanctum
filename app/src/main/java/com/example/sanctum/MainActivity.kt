@@ -216,14 +216,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     var currentUrl by activeTab.url
     var inputText by remember { mutableStateOf("") }
     
-    // Deep Link Interceptor
-    LaunchedEffect(initialUrl) {
-        if (!initialUrl.isNullOrEmpty()) {
-            currentUrl = initialUrl
-            activeTab.url.value = initialUrl
-            activeScreen = ActiveScreen.BROWSER
-        }
-    }
+
     
     LaunchedEffect(tabManager.tabs.size, activeTab.url.value, tabManager.activeTabIndex.value) {
         tabManager.saveState(context)
@@ -254,6 +247,14 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
 
     // Screen State
     var activeScreen by remember { mutableStateOf(ActiveScreen.SPLASH) }
+    // Deep Link Interceptor
+    LaunchedEffect(initialUrl) {
+        if (!initialUrl.isNullOrEmpty()) {
+            currentUrl = initialUrl
+            activeTab.url.value = initialUrl
+            activeScreen = ActiveScreen.BROWSER
+        }
+    }
 
     // Shield Features State
     val prefs = LocalContext.current.getSharedPreferences("sanctum_prefs", android.content.Context.MODE_PRIVATE)
@@ -678,6 +679,9 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     label = "screenSwitch"
                 ) { screen ->
                     when (screen) {
+                        ActiveScreen.SPLASH -> {
+                            SplashScreen(onSplashComplete = { activeScreen = ActiveScreen.BROWSER })
+                        }
                         ActiveScreen.BROWSER -> {
                             if (currentUrl == "sanctum://home") {
                                 HomeScreen(
