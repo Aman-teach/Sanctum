@@ -2,7 +2,7 @@
 
 **A premium, privacy-first Android browser with built-in DNS-over-HTTPS (DoH) safety filters, SafeSearch enforcement, URL keyword blocking, and a sleek iOS-inspired card UI.**
 
-Sanctum is built natively in Kotlin and Jetpack Compose, offering a hardware-accelerated, fluid browsing environment designed to protect user privacy offline and online. It eliminates intrusive tracking, enforces family-safe content policies, and provides a modern, premium aesthetic matching the visual excellence of iOS and Google Design guidelines.
+### 📥 [Download Sanctum APK (v2.4.0)](https://github.com/Aman-teach/Sanctum/releases/download/v2.4.0/Sanctum_Browser.apk)
 
 ---
 

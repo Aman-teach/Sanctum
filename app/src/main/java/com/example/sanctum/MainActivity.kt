@@ -89,6 +89,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.Image
 import com.example.sanctum.R
@@ -132,13 +135,14 @@ val AppTypography = Typography(
     labelSmall = defaultTypography.labelSmall.copy(fontFamily = Inter)
 )
 
-// Premium Warm Light Editorial Color Palette
-val EditorialPaper = Color(0xFFFCFCFA)      // Soft book page white
-val EditorialSurface = Color(0xFFF6F6F2)    // Warm sand/clay surface
-val EditorialInk = Color(0xFF1E1E1E)        // Deep letterpress charcoal ink
-val EditorialMutedInk = Color(0xFF6B6B67)   // Soft graphite gray
-val EditorialForest = Color(0xFF2E4035)     // Editorial accent forest green
-val EditorialBorder = Color(0xFFE6E6E1)     // Soft separator lines
+// Premium Slate-Fintech Color Palette
+val EditorialPaper = Color(0xFFF8FAFC)      // Slate-50 background
+val EditorialSurface = Color(0xFFF1F5F9)    // Slate-100 surface
+val EditorialInk = Color(0xFF0F172A)        // Slate-900 primary text/charcoal
+val EditorialMutedInk = Color(0xFF64748B)   // Slate-500 secondary text
+val EditorialForest = Color(0xFF0F172A)     // Primary slate color
+val EditorialBorder = Color(0xFFE2E8F0)     // Slate-200 border/lines
+val SecondaryAccent = Color(0xFFBAE6FD)     // Sky-200 light blue
 
 class MainActivity : ComponentActivity() {
 
@@ -608,7 +612,9 @@ fun BrowserScreen(activity: MainActivity) {
                                             inputText = formattedQuery
                                         }
                                     },
-                                    onProfileClick = { activeScreen = ActiveScreen.SETTINGS }
+                                    onProfileClick = { activeScreen = ActiveScreen.SETTINGS },
+                                    onShieldClick = { activeScreen = ActiveScreen.SAFETY_SHIELD },
+                                    onSettingsClick = { activeScreen = ActiveScreen.SETTINGS }
                                 )
                             }
                         }
@@ -791,7 +797,9 @@ enum class ShieldMode {
 @Composable
 fun HomeScreen(
     onSearchSubmit: (String) -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onShieldClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     var homeSearchText by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
@@ -804,7 +812,7 @@ fun HomeScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Header Row
+        // Premium Fintech Header Row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -812,36 +820,172 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "Sanctum Logo",
-                    modifier = Modifier.size(30.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Sanctum",
-                    color = EditorialInk,
-                    fontSize = 20.sp,
-                    fontFamily = Inter,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            IconButton(
-                onClick = onProfileClick,
-                modifier = Modifier.size(36.dp)
+            Icon(
+                painter = painterResource(id = R.drawable.ic_menu_dots),
+                contentDescription = "Menu",
+                tint = EditorialInk,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(EditorialSurface)
+                        .border(1.dp, EditorialBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_profile),
+                        contentDescription = "Profile",
+                        tint = EditorialInk,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Aman",
+                        color = EditorialInk,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = Inter
+                    )
+                    Text(
+                        text = "amanxmedia@gmail.com",
+                        color = EditorialMutedInk,
+                        fontSize = 11.sp,
+                        fontFamily = Inter
+                    )
+                }
+            }
+
+            Box(contentAlignment = Alignment.TopEnd) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_profile),
-                    contentDescription = "Profile",
+                    painter = painterResource(id = R.drawable.ic_shield),
+                    contentDescription = "Notification",
                     tint = EditorialInk,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp).clickable { onProfileClick() }
+                )
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color.Red)
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Shielded Threats Display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Shielded threats",
+                    color = EditorialMutedInk,
+                    fontSize = 13.sp,
+                    fontFamily = Inter
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "25,291",
+                    color = EditorialInk,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter,
+                    letterSpacing = (-0.8).sp
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "+100% Secure",
+                    color = Color(0xFF10B981),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "+ 1,284 today",
+                    color = EditorialMutedInk,
+                    fontSize = 11.sp,
+                    fontFamily = Inter
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Action Buttons Grid
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1.3f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF0F172A))
+                    .clickable { onShieldClick() }
+                    .padding(16.dp)
+                    .height(90.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_arrow_right),
+                    contentDescription = "Shield Details",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer(rotationZ = 135f)
+                )
+                Text(
+                    text = "Security Shield",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SecondaryAccent)
+                    .clickable { onSettingsClick() }
+                    .padding(16.dp)
+                    .height(90.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_arrow_right),
+                    contentDescription = "Filter Settings",
+                    tint = Color(0xFF0F172A),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer(rotationZ = -45f)
+                )
+                Text(
+                    text = "Custom Filters",
+                    color = Color(0xFF0F172A),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Search Bar Capsule
         TextField(
@@ -850,7 +994,6 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 50.dp)
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(25.dp))
                 .border(1.dp, EditorialBorder, RoundedCornerShape(25.dp))
                 .clip(RoundedCornerShape(25.dp)),
             colors = TextFieldDefaults.colors(
@@ -934,7 +1077,6 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Quick Links Row (Globe, Mail, Clock, Star)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -964,7 +1106,7 @@ fun HomeScreen(
                         Icon(
                             painter = painterResource(id = link.second),
                             contentDescription = link.first,
-                            tint = EditorialForest,
+                            tint = EditorialInk,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -980,6 +1122,65 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(28.dp))
+
+        // Active Protections Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Text(
+                text = "Active Protections",
+                color = EditorialInk,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter,
+                letterSpacing = (-0.2).sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+        ) {
+            ProtectionListItem(
+                title = "Ad & Tracker Blocker",
+                source = "StevenBlack Host Filters",
+                status = "1,284 blocked",
+                indicator = "Active",
+                onClick = { onShieldClick() }
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ProtectionListItem(
+                title = "DNS Guard",
+                source = "Cloudflare Family DNS (1.1.1.3)",
+                status = "Secure Resolved",
+                indicator = "Active",
+                onClick = { onShieldClick() }
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ProtectionListItem(
+                title = "Keyword Scanner",
+                source = "Explicit Blocker Engine",
+                status = "Scanning Active",
+                indicator = "Active",
+                onClick = { onSettingsClick() }
+            )
+            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
+            ProtectionListItem(
+                title = "SafeSearch Enforcer",
+                source = "Google Search Safeguard",
+                status = "Redirect Enforced",
+                indicator = "Active",
+                onClick = { onSettingsClick() }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Discover Section
         Row(
@@ -1005,22 +1206,19 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Discover Card
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(180.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
         ) {
-            // Background Image
             Image(
                 painter = painterResource(id = R.drawable.discover_forest_bg),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-            // Overlay Gradient for text readability
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1081,57 +1279,8 @@ fun HomeScreen(
                     letterSpacing = (-0.3).sp,
                     lineHeight = 22.sp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "How intentional digital environments influence our cognitive well-being...",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 11.sp,
-                    fontFamily = Inter,
-                    lineHeight = 15.sp
-                )
             }
         }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Trending Now Section
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Text(
-                text = "Trending Now",
-                color = EditorialInk,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = Inter,
-                letterSpacing = (-0.2).sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Trending List inside a white rounded card
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White)
-                .border(1.dp, EditorialBorder, RoundedCornerShape(12.dp))
-        ) {
-            TrendingListItem(
-                title = "Future of Minimalist Architecture",
-                source = "Design Digest • 2h ago",
-                onClick = { onSearchSubmit("https://en.wikipedia.org/wiki/Minimalist_architecture") }
-            )
-            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
-            TrendingListItem(
-                title = "Digital Detox: A Practical Guide",
-                source = "Wellness Monthly • 4h ago",
-                onClick = { onSearchSubmit("https://en.wikipedia.org/wiki/Digital_detox") }
-            )
-        }
-        
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
@@ -1195,6 +1344,78 @@ fun TrendingListItem(
     }
 }
 
+@Composable
+fun ProtectionListItem(
+    title: String,
+    source: String,
+    status: String,
+    indicator: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(EditorialSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_shield),
+                    contentDescription = null,
+                    tint = Color(0xFF0F172A),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = title,
+                    color = EditorialInk,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = source,
+                    color = EditorialMutedInk,
+                    fontSize = 11.sp,
+                    fontFamily = Inter
+                )
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = status,
+                color = EditorialInk,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = indicator,
+                color = Color(0xFF10B981),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter
+            )
+        }
+    }
+}
+
 private fun getBlockedResponse(context: android.content.Context): WebResourceResponse {
     return try {
         val inputStream = context.assets.open("blocked.html")
@@ -1251,7 +1472,7 @@ fun SafetyShieldScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        // Header Row
+        // Header Row matching AVA details style
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1259,179 +1480,250 @@ fun SafetyShieldScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "Sanctum Logo",
-                    modifier = Modifier.size(30.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Sanctum",
-                    color = EditorialInk,
-                    fontSize = 20.sp,
-                    fontFamily = Inter,
-                    fontWeight = FontWeight.Bold
-                )
-            }
             Icon(
-                painter = painterResource(id = R.drawable.ic_profile),
-                contentDescription = "Profile",
+                painter = painterResource(id = R.drawable.ic_back),
+                contentDescription = "Back",
                 tint = EditorialInk,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = "Shield Details",
+                color = EditorialInk,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter
+            )
+            Icon(
+                painter = painterResource(id = R.drawable.ic_shield),
+                contentDescription = "Alerts",
+                tint = EditorialInk,
+                modifier = Modifier.size(22.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Screen Title
+        // Shield status layout (formerly AVA info card)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(EditorialSurface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_shield),
+                        contentDescription = null,
+                        tint = EditorialInk,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Active Blocker Shield",
+                    color = EditorialInk,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE8F5E9))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "100% Active",
+                    color = Color(0xFF10B981),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Large Counter
         Text(
-            text = "Safety Shield",
+            text = "1,284",
             color = EditorialInk,
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = Inter,
-            letterSpacing = (-0.6).sp,
-            lineHeight = 34.sp
+            letterSpacing = (-0.8).sp
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Your browsing environment is protected by Sanctum's advanced security protocols.",
+            text = "Trackers blocked this week",
             color = EditorialMutedInk,
             fontSize = 12.sp,
-            fontFamily = Inter,
-            lineHeight = 17.sp
+            fontFamily = Inter
         )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Action Buttons Row (Buy & Sell style inside details)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Charcoal button (Strict Mode)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0F172A))
+                    .clickable { onShieldModeChange(ShieldMode.STRICT) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Strict Mode",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+            }
+
+            // Light blue button (Standard Mode)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SecondaryAccent)
+                    .clickable { onShieldModeChange(ShieldMode.STANDARD) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Standard Mode",
+                    color = Color(0xFF0F172A),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = Inter
+                )
+            }
+
+            // Small Alert Icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(12.dp))
+                    .clickable { /* alert toggle */ },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_star),
+                    contentDescription = "Alert Alert",
+                    tint = EditorialInk,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Protection Report Card
-        Column(
+        // Blocker Trend Line Chart
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
-                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
-                .padding(16.dp)
+                .height(140.dp)
+                .padding(vertical = 8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "STATUS",
-                        color = EditorialMutedInk,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = Inter,
-                        letterSpacing = 1.5.sp
-                    )
-                    Text(
-                        text = "Protection Report",
-                        color = EditorialInk,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = Inter,
-                        letterSpacing = (-0.2).sp
-                    )
-                }
-                // Active Now badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFE8F5E9))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                    val pulseAlpha by infiniteTransition.animateFloat(
-                        initialValue = 0.4f,
-                        targetValue = 1.0f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(durationMillis = 1200),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "pulseAlpha"
-                    )
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(EditorialForest.copy(alpha = pulseAlpha))
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Active Now",
-                            color = EditorialForest,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = Inter
-                        )
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val height = size.height
+                
+                // Grid lines
+                drawLine(
+                    color = EditorialBorder,
+                    start = androidx.compose.ui.geometry.Offset(0f, height * 0.5f),
+                    end = androidx.compose.ui.geometry.Offset(width, height * 0.5f),
+                    strokeWidth = 1.dp.toPx()
+                )
+                
+                // Chart path
+                val points = listOf(
+                    androidx.compose.ui.geometry.Offset(0f, height * 0.8f),
+                    androidx.compose.ui.geometry.Offset(width * 0.15f, height * 0.6f),
+                    androidx.compose.ui.geometry.Offset(width * 0.3f, height * 0.75f),
+                    androidx.compose.ui.geometry.Offset(width * 0.45f, height * 0.5f),
+                    androidx.compose.ui.geometry.Offset(width * 0.6f, height * 0.3f),
+                    androidx.compose.ui.geometry.Offset(width * 0.75f, height * 0.45f),
+                    androidx.compose.ui.geometry.Offset(width * 0.9f, height * 0.15f),
+                    androidx.compose.ui.geometry.Offset(width, height * 0.25f)
+                )
+                
+                val chartPath = Path().apply {
+                    moveTo(points[0].x, points[0].y)
+                    for (i in 1 until points.size) {
+                        lineTo(points[i].x, points[i].y)
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Stats grid (2 columns, 2 rows)
-            Row(modifier = Modifier.fillMaxWidth()) {
-                StatItem(label = "Trackers Blocked", value = "1,284", modifier = Modifier.weight(1f))
-                StatItem(label = "Privacy Alerts", value = "0", modifier = Modifier.weight(1f))
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                StatItem(label = "Data Saved", value = "42MB", modifier = Modifier.weight(1f))
-                StatItem(label = "Threat Score", value = "Low", valueColor = EditorialForest, modifier = Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // View Detailed Insights box
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(EditorialSurface),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(EditorialSurface, EditorialForest.copy(alpha = 0.15f))
-                            )
-                        )
+                
+                drawPath(
+                    path = chartPath,
+                    color = Color(0xFF8B5CF6),
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
-                // Insights button
+                
+                // Highlight point
+                drawCircle(
+                    color = Color(0xFF8B5CF6),
+                    radius = 4.dp.toPx(),
+                    center = points[4]
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 2.dp.toPx(),
+                    center = points[4]
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Time Selectors
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val intervals = listOf("D", "W", "M", "6M", "Y", "All")
+            intervals.forEach { interval ->
+                val isSelected = interval == "M"
                 Box(
                     modifier = Modifier
-                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp))
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White)
-                        .border(1.dp, EditorialBorder, RoundedCornerShape(20.dp))
-                        .clickable { /* action */ }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) EditorialSurface else Color.Transparent)
+                        .clickable { /* select */ }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "View Detailed Insights",
-                        color = EditorialInk,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = interval,
+                        color = if (isSelected) EditorialInk else EditorialMutedInk,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         fontFamily = Inter
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // Toggle rows card
+        // Blocker toggles list
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1460,105 +1752,6 @@ fun SafetyShieldScreen(
                 onCheckedChange = onHttpsOnlyChange
             )
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Shield Mode Section
-        Text(
-            text = "Shield Mode",
-            color = EditorialInk,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = Inter,
-            letterSpacing = (-0.2).sp,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
-                .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
-        ) {
-            ShieldModeItem(
-                mode = ShieldMode.STANDARD,
-                title = "Standard",
-                description = "Balanced protection for daily browsing without breaking web features.",
-                selected = shieldMode == ShieldMode.STANDARD,
-                onClick = { onShieldModeChange(ShieldMode.STANDARD) }
-            )
-            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
-            ShieldModeItem(
-                mode = ShieldMode.STRICT,
-                title = "Strict",
-                description = "Aggressive protection level. Blocks most scripts and may affect some site functionality.",
-                selected = shieldMode == ShieldMode.STRICT,
-                onClick = { onShieldModeChange(ShieldMode.STRICT) }
-            )
-            Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(EditorialBorder))
-            ShieldModeItem(
-                mode = ShieldMode.STEALTH,
-                title = "Stealth",
-                description = "Maximum isolation. Routes traffic through encrypted tunnels and strips all metadata.",
-                selected = shieldMode == ShieldMode.STEALTH,
-                onClick = { onShieldModeChange(ShieldMode.STEALTH) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Sanctuary AI Card with circular ring background
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(EditorialForest, Color(0xFF1B2A20))
-                    )
-                )
-        ) {
-            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = Color(0xFF81C784).copy(alpha = 0.15f),
-                    radius = 120.dp.toPx(),
-                    center = center.copy(x = center.x * 1.3f, y = center.y * 1.1f)
-                )
-                drawCircle(
-                    color = Color(0xFF81C784).copy(alpha = 0.08f),
-                    radius = 180.dp.toPx(),
-                    center = center.copy(x = center.x * 1.3f, y = center.y * 1.1f)
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "SANCTUM AI",
-                    color = Color(0xFF81C784),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = Inter,
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Your digital perimeter is monitored by advanced heuristics.",
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontFamily = Inter,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 20.sp
-                )
-            }
-        }
-
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
