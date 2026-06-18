@@ -546,7 +546,14 @@ fun BrowserScreen(activity: MainActivity) {
                                 var query = inputText.trim()
                                 if (query.isNotEmpty()) {
                                     if (!query.contains(".") || query.contains(" ")) {
-                                        query = "https://duckduckgo.com/?q=" + URLEncoder.encode(query, "UTF-8") + "&safe=active"
+                                        currentNativeQuery = query
+                                        activeScreen = ActiveScreen.NATIVE_SEARCH
+                                        isNativeSearchLoading = true
+                                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                            nativeSearchResults = SearchEngine.performSearch(query)
+                                            isNativeSearchLoading = false
+                                        }
+                                        return@KeyboardActions
                                     } else if (!query.startsWith("http://") && !query.startsWith("https://")) {
                                         query = "https://$query"
                                     }
