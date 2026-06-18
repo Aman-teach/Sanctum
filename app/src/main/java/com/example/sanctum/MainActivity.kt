@@ -340,16 +340,13 @@ fun BrowserScreen(activity: MainActivity) {
                 }
 
                 override fun onPageFinished(view: WebView?, urlStr: String?) {
-                    // Inject Custom CSS to hide Google branding
-                    if (urlStr?.contains("google.com/search") == true) {
+                    // Inject Custom CSS to hide Google branding globally
+                    if (urlStr?.contains("google.") == true) {
                         val js = "(function() {" +
                                 "var style = document.createElement('style');" +
                                 "style.innerHTML = '" +
-                                "#Sva75c { display: none !important; }" + // top header
-                                "#sfooter { display: none !important; }" + // footer
-                                ".z1asCe { display: none !important; }" + // logos
-                                ".F1hUFe { display: none !important; }" + // search bar top
-                                "body { background-color: #F8FAFC !important; }" + // fintech slate bg
+                                "header, footer, #sfooter, #tsf, form[action=\"/search\"], #hplogo, img[alt=\"Google\"], .z1asCe, .F1hUFe, div[role=\"navigation\"], .o3j99 { display: none !important; visibility: hidden !important; opacity: 0 !important; }" +
+                                "body { background-color: #F8FAFC !important; }" +
                                 "'; document.head.appendChild(style);" +
                                 "})();"
                         view?.evaluateJavascript(js, null)
