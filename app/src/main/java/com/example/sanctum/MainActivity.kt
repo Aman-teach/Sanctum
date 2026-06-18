@@ -200,13 +200,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BrowserScreen(activity: MainActivity) {
     val context = LocalContext.current
-    var currentUrl by remember { mutableStateOf("sanctum://home") }
+    val tabManager = remember { 
+        TabManager().apply { 
+            loadState(context)
+            if (tabs.isEmpty()) addTab()
+        } 
+    }
+    val activeTab = tabManager.activeTab ?: return
+    
+    var currentUrl by activeTab.url
     var inputText by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }
-    var canGoBack by remember { mutableStateOf(false) }
-    var canGoForward by remember { mutableStateOf(false) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    
+    LaunchedEffect(tabManager.tabs.size, activeTab.url.value, tabManager.activeTabIndex.value) {
+        tabManager.saveState(context)
+    }
+    var isLoading by activeTab.isLoading
+    var progress by activeTab.progress
+    var canGoBack by activeTab.canGoBack
+    var canGoForward by activeTab.canGoForward
+    var webViewRef = activeTab.webView
+    
+    // Sync inputText with active tab's URL
+    LaunchedEffect(currentUrl) {
+        if (!currentUrl.startsWith("file:///android_asset/")) {
+            inputText = currentUrl
+        }
+    }
     val focusManager = LocalFocusManager.current
 
     // Screen State
@@ -220,8 +239,8 @@ fun BrowserScreen(activity: MainActivity) {
     var familyMode by remember { mutableStateOf(true) }
 
     // Instantiated once per BrowserScreen lifecycle and reused to prevent startup blank screen flash
-    val webView = remember {
-        WebView(context).apply {
+    fun createWebViewForTab(): WebView {
+        return WebView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -321,6 +340,20 @@ fun BrowserScreen(activity: MainActivity) {
                 }
 
                 override fun onPageFinished(view: WebView?, urlStr: String?) {
+                    // Inject Custom CSS to hide Google branding
+                    if (urlStr?.contains("google.com/search") == true) {
+                        val js = "(function() {" +
+                                "var style = document.createElement('style');" +
+                                "style.innerHTML = '" +
+                                "#Sva75c { display: none !important; }" + // top header
+                                "#sfooter { display: none !important; }" + // footer
+                                ".z1asCe { display: none !important; }" + // logos
+                                ".F1hUFe { display: none !important; }" + // search bar top
+                                "body { background-color: #F8FAFC !important; }" + // fintech slate bg
+                                "'; document.head.appendChild(style);" +
+                                "})();"
+                        view?.evaluateJavascript(js, null)
+                    }
                     super.onPageFinished(view, urlStr)
                     isLoading = false
                     canGoBack = view?.canGoBack() == true
@@ -381,7 +414,11 @@ fun BrowserScreen(activity: MainActivity) {
             }
         }
     }
-    webViewRef = webView
+
+    if (activeTab.webView == null) {
+        activeTab.webView = createWebViewForTab()
+    }
+    webViewRef = activeTab.webView
 
     var isUrlDetailsOpen by remember { mutableStateOf(false) }
 
@@ -574,7 +611,7 @@ fun BrowserScreen(activity: MainActivity) {
             ) {
                 // WebView integration (always active to maintain state)
                 AndroidView(
-                    factory = { webView },
+                    factory = { webViewRef!! },
                     update = { webViewInstance ->
                         if (currentUrl == "sanctum://home") {
                             if (webViewInstance.url != "about:blank") {
@@ -2423,6 +2460,124 @@ fun UrlDetailsDialog(
             }
             
             Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+fun TabOverviewScreen(
+    tabManager: TabManager,
+    onClose: () -> Unit,
+    onNewTab: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EditorialPaper)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Open Tabs",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter,
+                color = EditorialInk
+            )
+            Text(
+                text = "Done",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = Inter,
+                color = SecondaryAccent,
+                modifier = Modifier.clickable { onClose() }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            tabManager.tabs.forEachIndexed { index, tab ->
+                val isSelected = tabManager.activeTabIndex.value == index
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EditorialSurface)
+                        .border(if (isSelected) 2.dp else 1.dp, if (isSelected) SecondaryAccent else EditorialBorder, RoundedCornerShape(12.dp))
+                        .clickable {
+                            tabManager.switchTab(index)
+                            onClose()
+                        }
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = tab.title.value.ifEmpty { "New Tab" },
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = EditorialInk,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = tab.url.value,
+                                fontSize = 12.sp,
+                                color = EditorialMutedInk,
+                                maxLines = 1
+                            )
+                        }
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFEE2E2))
+                                .clickable {
+                                    tabManager.closeTab(index)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("X", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            
+            // New Tab Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(EditorialInk)
+                    .clickable { onNewTab() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "+ New Tab",
+                    color = EditorialPaper,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
+                )
+            }
         }
     }
 }
