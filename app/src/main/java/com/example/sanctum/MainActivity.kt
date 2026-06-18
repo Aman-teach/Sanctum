@@ -340,17 +340,7 @@ fun BrowserScreen(activity: MainActivity) {
                 }
 
                 override fun onPageFinished(view: WebView?, urlStr: String?) {
-                    // Inject Custom CSS to hide Google branding globally
-                    if (urlStr?.contains("google.") == true) {
-                        val js = "(function() {" +
-                                "var style = document.createElement('style');" +
-                                "style.innerHTML = '" +
-                                "header, footer, #sfooter, #tsf, form[action=\"/search\"], #hplogo, img[alt=\"Google\"], .z1asCe, .F1hUFe, div[role=\"navigation\"], .o3j99 { display: none !important; visibility: hidden !important; opacity: 0 !important; }" +
-                                "body { background-color: #F8FAFC !important; }" +
-                                "'; document.head.appendChild(style);" +
-                                "})();"
-                        view?.evaluateJavascript(js, null)
-                    }
+
                     super.onPageFinished(view, urlStr)
                     isLoading = false
                     canGoBack = view?.canGoBack() == true
@@ -526,7 +516,7 @@ fun BrowserScreen(activity: MainActivity) {
                                 var query = inputText.trim()
                                 if (query.isNotEmpty()) {
                                     if (!query.contains(".") || query.contains(" ")) {
-                                        query = "https://www.google.com/search?q=" + URLEncoder.encode(query, "UTF-8") + "&safe=active"
+                                        query = "https://duckduckgo.com/?q=" + URLEncoder.encode(query, "UTF-8") + "&safe=active"
                                     } else if (!query.startsWith("http://") && !query.startsWith("https://")) {
                                         query = "https://$query"
                                     }
@@ -636,7 +626,7 @@ fun BrowserScreen(activity: MainActivity) {
                                         var formattedQuery = query.trim()
                                         if (formattedQuery.isNotEmpty()) {
                                             if (!formattedQuery.contains(".") || formattedQuery.contains(" ")) {
-                                                formattedQuery = "https://www.google.com/search?q=" + URLEncoder.encode(formattedQuery, "UTF-8") + "&safe=active"
+                                                formattedQuery = "https://duckduckgo.com/?q=" + URLEncoder.encode(formattedQuery, "UTF-8") + "&safe=active"
                                             } else if (!formattedQuery.startsWith("http://") && !formattedQuery.startsWith("https://")) {
                                                 formattedQuery = "https://$formattedQuery"
                                             }
