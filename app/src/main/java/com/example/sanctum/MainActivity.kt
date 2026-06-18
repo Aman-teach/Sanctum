@@ -253,6 +253,9 @@ fun BrowserScreen(activity: MainActivity) {
     // Native Search State
     var nativeSearchResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
     var nativeSearchTokens by remember { mutableStateOf<Map<String, String>?>(null) }
+    var nativeImageResults by remember { mutableStateOf<List<ImageSearchResult>>(emptyList()) }
+    var currentNativeTab by remember { mutableStateOf("All") }
+    // REPLACED_TOKEN by remember { mutableStateOf<Map<String, String>?>(null) }
     var isNativeSearchLoading by remember { mutableStateOf(false) }
     var isNativeSearchPaging by remember { mutableStateOf(false) }
     var currentNativeQuery by remember { mutableStateOf("") }
@@ -550,6 +553,7 @@ fun BrowserScreen(activity: MainActivity) {
                                     if (!query.contains(".") || query.contains(" ")) {
                                         currentNativeQuery = query
                                         activeScreen = ActiveScreen.NATIVE_SEARCH
+                                        currentNativeTab = "All"
                                         isNativeSearchLoading = true
                                         coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                                             val response = SearchEngine.performSearch(query)
@@ -669,6 +673,7 @@ fun BrowserScreen(activity: MainActivity) {
                                             if (!formattedQuery.contains(".") || formattedQuery.contains(" ")) {
                                                 currentNativeQuery = formattedQuery
                                                 activeScreen = ActiveScreen.NATIVE_SEARCH
+                                                currentNativeTab = "All"
                                                 isNativeSearchLoading = true
                                                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                                                     val response = SearchEngine.performSearch(formattedQuery)
@@ -718,6 +723,8 @@ fun BrowserScreen(activity: MainActivity) {
                             NativeSearchScreen(
                                 query = currentNativeQuery,
                                 results = nativeSearchResults,
+                                imageResults = nativeImageResults,
+                                currentTab = currentNativeTab,
                                 isLoading = isNativeSearchLoading,
                                 hasNextPage = nativeSearchTokens != null,
                                 isPaging = isNativeSearchPaging,
@@ -737,19 +744,29 @@ fun BrowserScreen(activity: MainActivity) {
                                     }
                                 },
                                 onTabClick = { tabName ->
-                                    var encoded = ""
-                                    try {
-                                        encoded = java.net.URLEncoder.encode(currentNativeQuery, "UTF-8")
-                                    } catch (e: Exception) {}
-                                    val iaParam = when (tabName) {
-                                        "Images" -> "images"
-                                        "Videos" -> "videos"
-                                        "News" -> "news"
-                                        "Maps" -> "maps"
-                                        else -> "web"
+                                    currentNativeTab = tabName
+                                    if (tabName == "Images") {
+                                        if (nativeImageResults.isEmpty()) {
+                                            isNativeSearchLoading = true
+                                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                                nativeImageResults = SearchEngine.performImageSearch(currentNativeQuery)
+                                                isNativeSearchLoading = false
+                                            }
+                                        }
+                                    } else if (tabName != "All") {
+                                        var encoded = ""
+                                        try {
+                                            encoded = java.net.URLEncoder.encode(currentNativeQuery, "UTF-8")
+                                        } catch (e: Exception) {}
+                                        val iaParam = when (tabName) {
+                                            "Videos" -> "videos"
+                                            "News" -> "news"
+                                            "Maps" -> "maps"
+                                            else -> "web"
+                                        }
+                                        activeTab.url.value = "https://duckduckgo.com/?q=$encoded&ia=$iaParam"
+                                        activeScreen = ActiveScreen.BROWSER
                                     }
-                                    activeTab.url.value = "https://duckduckgo.com/?q=$encoded&ia=$iaParam"
-                                    activeScreen = ActiveScreen.BROWSER
                                 }
                             )
                         }

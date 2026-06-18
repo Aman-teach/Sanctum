@@ -5,6 +5,13 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import java.net.URLEncoder
 
+data class ImageSearchResult(
+    val image: String,
+    val thumbnail: String,
+    val title: String,
+    val url: String
+)
+
 data class SearchResult(
     val title: String,
     val url: String,
@@ -44,6 +51,54 @@ object SearchEngine {
         } catch (e: Exception) {
             e.printStackTrace()
             SearchResponse(emptyList(), null)
+        }
+    }
+
+    suspend fun performImageSearch(query: String): List<ImageSearchResult> = withContext(Dispatchers.IO) {
+        try {
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val doc = Jsoup.connect("https://duckduckgo.com/?q=$encodedQuery")
+                .userAgent(USER_AGENT)
+                .timeout(5000)
+                .get()
+            
+            val html = doc.html()
+            val vqdMatch = "vqd=([\'\"]?)([^\'\"&\\s]+)\\1".toRegex().find(html)
+            val vqd = vqdMatch?.groups?.get(2)?.value
+            
+            if (vqd != null) {
+                val jsonStr = Jsoup.connect("https://duckduckgo.com/i.js?o=json&q=$encodedQuery&vqd=$vqd")
+                    .userAgent(USER_AGENT)
+                    .ignoreContentType(true)
+                    .execute()
+                    .body()
+                
+                val jsonObject = org.json.JSONObject(jsonStr)
+                val resultsArray = jsonObject.optJSONArray("results")
+                val images = mutableListOf<ImageSearchResult>()
+                
+                if (resultsArray != null) {
+                    for (i in 0 until resultsArray.length()) {
+                        val item = resultsArray.optJSONObject(i)
+                        if (item != null) {
+                            images.add(
+                                ImageSearchResult(
+                                    image = item.optString("image"),
+                                    thumbnail = item.optString("thumbnail"),
+                                    title = item.optString("title"),
+                                    url = item.optString("url")
+                                )
+                            )
+                        }
+                    }
+                }
+                images
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
         }
     }
 
