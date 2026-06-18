@@ -663,14 +663,22 @@ fun BrowserScreen(activity: MainActivity) {
                                         var formattedQuery = query.trim()
                                         if (formattedQuery.isNotEmpty()) {
                                             if (!formattedQuery.contains(".") || formattedQuery.contains(" ")) {
-                                                formattedQuery = "https://duckduckgo.com/?q=" + URLEncoder.encode(formattedQuery, "UTF-8") + "&safe=active"
-                                            } else if (!formattedQuery.startsWith("http://") && !formattedQuery.startsWith("https://")) {
-                                                formattedQuery = "https://$formattedQuery"
+                                                currentNativeQuery = formattedQuery
+                                                activeScreen = ActiveScreen.NATIVE_SEARCH
+                                                isNativeSearchLoading = true
+                                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                                    nativeSearchResults = SearchEngine.performSearch(formattedQuery)
+                                                    isNativeSearchLoading = false
+                                                }
+                                            } else {
+                                                if (!formattedQuery.startsWith("http://") && !formattedQuery.startsWith("https://")) {
+                                                    formattedQuery = "https://$formattedQuery"
+                                                }
+                                                isLoading = true
+                                                progress = 0.1f
+                                                currentUrl = formattedQuery
+                                                inputText = formattedQuery
                                             }
-                                            isLoading = true
-                                            progress = 0.1f
-                                            currentUrl = formattedQuery
-                                            inputText = formattedQuery
                                         }
                                     },
                                     onProfileClick = { activeScreen = ActiveScreen.SETTINGS },
