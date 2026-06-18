@@ -357,7 +357,7 @@ fun BrowserScreen(activity: MainActivity) {
                                 "var style = document.createElement('style');" +
                                 "style.innerHTML = '" +
                                 ".header__logo-wrap, .logo-wrap--home, .header__logo, a[href=\"/\"] { display: none !important; visibility: hidden !important; opacity: 0 !important; width: 0 !important; }" +
-                                ".duckchat-button, .js-duckchat-chat-btn, .duckchat-header, .js-duckchat-prompts, .duckai-btn, a[href*=\\"/chat\\"], .header__button--menu, .js-header-menu-btn, #duckbar_chat, .header__button--chat { display: none !important; visibility: hidden !important; opacity: 0 !important; width: 0 !important; pointer-events: none !important; }" +
+                                ".duckchat-button, .js-duckchat-chat-btn, .duckchat-header, .js-duckchat-prompts, .duckai-btn, a[href*=\"/chat\"], .header__button--menu, .js-header-menu-btn, #duckbar_chat, .header__button--chat { display: none !important; visibility: hidden !important; opacity: 0 !important; width: 0 !important; pointer-events: none !important; }" +
                                 ".badge-link, .js-badge-main-msg, .js-install-prompt, .install-prompt, .app-smart-banner { display: none !important; }" +
                                 "'; document.head.appendChild(style);" +
                                 "})();"
