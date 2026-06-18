@@ -40,7 +40,7 @@ fun NativeSearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA)) // Google-like super light gray background
+            .background(Color(0xFFFFFFFF)) // Google-like super light gray background
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -59,13 +59,13 @@ fun NativeSearchScreen(
         ScrollableTabRow(
             selectedTabIndex = selectedIndex,
             containerColor = Color.Transparent,
-            contentColor = Color(0xFF1A73E8),
+            contentColor = Color(0xFF8C52FF),
             edgePadding = 16.dp,
             divider = {},
             indicator = { tabPositions ->
                 SecondaryIndicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
-                    color = Color(0xFF1A73E8)
+                    color = Color(0xFF8C52FF)
                 )
             }
         ) {
@@ -78,18 +78,18 @@ fun NativeSearchScreen(
                             text = title, 
                             fontFamily = Inter, 
                             fontWeight = if (title == currentTab) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (title == currentTab) Color(0xFF1A73E8) else EditorialMutedInk
+                            color = if (title == currentTab) Color(0xFF8C52FF) else EditorialMutedInk
                         ) 
                     }
                 )
             }
         }
         
-        HorizontalDivider(color = Color(0xFFE8EAED), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF8C52FF).copy(alpha = 0.2f), thickness = 1.dp)
 
         if (isLoading && results.isEmpty() && imageResults.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF1A73E8))
+                CircularProgressIndicator(color = Color(0xFF8C52FF))
             }
         } else if (currentTab == "Images") {
             if (imageResults.isEmpty()) {
@@ -136,7 +136,7 @@ fun NativeSearchScreen(
                     SearchResultCard(result, onResultClick)
                     if (index < results.size - 1) {
                         HorizontalDivider(
-                            color = Color(0xFFE8EAED), 
+                            color = Color(0xFF8C52FF).copy(alpha = 0.2f), 
                             thickness = 1.dp,
                             modifier = Modifier.padding(vertical = 12.dp)
                         )
@@ -152,11 +152,11 @@ fun NativeSearchScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isPaging) {
-                                CircularProgressIndicator(color = Color(0xFF1A73E8))
+                                CircularProgressIndicator(color = Color(0xFF8C52FF))
                             } else {
                                 Button(
                                     onClick = onLoadMore,
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A73E8)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8C52FF)),
                                     shape = RoundedCornerShape(24.dp),
                                     modifier = Modifier.height(48.dp)
                                 ) {
@@ -185,7 +185,7 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
             text = result.url.replace("https://", "").replace("http://", "").substringBefore("/"),
             fontSize = 12.sp,
             fontFamily = Inter,
-            color = Color(0xFF202124), // Google Dark
+            color = Color(0xFF8C52FF), // Google Dark
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -197,7 +197,7 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
             fontSize = 20.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = Inter,
-            color = Color(0xFF1A0DAB), // Google Title Blue
+            color = Color(0xFF8C52FF), // Google Title Blue
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -208,7 +208,7 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
             text = result.snippet,
             fontSize = 14.sp,
             fontFamily = Inter,
-            color = Color(0xFF4D5156), // Google Snippet Gray
+            color = Color(0xFF8C52FF).copy(alpha = 0.8f), // Google Snippet Gray
             lineHeight = 20.sp,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis

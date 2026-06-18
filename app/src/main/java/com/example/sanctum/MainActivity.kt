@@ -139,13 +139,13 @@ val AppTypography = Typography(
 )
 
 // Premium Slate-Fintech Color Palette
-val EditorialPaper = Color(0xFFF8FAFC)      // Slate-50 background
-val EditorialSurface = Color(0xFFF1F5F9)    // Slate-100 surface
-val EditorialInk = Color(0xFF0F172A)        // Slate-900 primary text/charcoal
-val EditorialMutedInk = Color(0xFF64748B)   // Slate-500 secondary text
-val EditorialForest = Color(0xFF0F172A)     // Primary slate color
-val EditorialBorder = Color(0xFFE2E8F0)     // Slate-200 border/lines
-val SecondaryAccent = Color(0xFFBAE6FD)     // Sky-200 light blue
+val EditorialPaper = Color(0xFFFFFFFF)      // Slate-50 background
+val EditorialSurface = Color(0xFFFFFFFF)    // Slate-100 surface
+val EditorialInk = Color(0xFF8C52FF)        // Slate-900 primary text/charcoal
+val EditorialMutedInk = Color(0xFF8C52FF).copy(alpha = 0.6f)   // Slate-500 secondary text
+val EditorialForest = Color(0xFF8C52FF)     // Primary slate color
+val EditorialBorder = Color(0xFF8C52FF).copy(alpha = 0.2f)     // Slate-200 border/lines
+val SecondaryAccent = Color(0xFF8C52FF).copy(alpha = 0.1f)     // Sky-200 light blue
 
 class MainActivity : ComponentActivity() {
 
@@ -486,7 +486,7 @@ fun BrowserScreen(activity: MainActivity) {
                         contentAlignment = Alignment.Center
                     ) {
                         androidx.compose.foundation.Image(
-                            painter = painterResource(id = R.drawable.app_logo),
+                            painter = painterResource(id = R.drawable.ic_sanctum_logo),
                             contentDescription = "Home",
                             modifier = Modifier.size(28.dp)
                         )
@@ -2056,7 +2056,7 @@ fun SettingsScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(id = R.drawable.app_logo),
+                    painter = painterResource(id = R.drawable.ic_sanctum_logo),
                     contentDescription = "Sanctum Logo",
                     modifier = Modifier.size(30.dp)
                 )
@@ -2359,7 +2359,7 @@ fun SettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.app_logo),
+                painter = painterResource(id = R.drawable.ic_sanctum_logo),
                 contentDescription = null,
                 modifier = Modifier.size(72.dp)
             )
