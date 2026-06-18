@@ -67,6 +67,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,7 +107,6 @@ import android.webkit.ValueCallback
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
@@ -247,6 +249,12 @@ fun BrowserScreen(activity: MainActivity) {
     var httpsOnly by remember { mutableStateOf(false) }
     var shieldMode by remember { mutableStateOf(ShieldMode.STANDARD) }
     var familyMode by remember { mutableStateOf(true) }
+    
+    // Native Search State
+    var nativeSearchResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
+    var isNativeSearchLoading by remember { mutableStateOf(false) }
+    var currentNativeQuery by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
 
     // Instantiated once per BrowserScreen lifecycle and reused to prevent startup blank screen flash
     fun createWebViewForTab(): WebView {
@@ -685,6 +693,17 @@ fun BrowserScreen(activity: MainActivity) {
                                 onBack = { activeScreen = ActiveScreen.BROWSER }
                             )
                         }
+                        ActiveScreen.NATIVE_SEARCH -> {
+                            NativeSearchScreen(
+                                query = currentNativeQuery,
+                                results = nativeSearchResults,
+                                isLoading = isNativeSearchLoading,
+                                onResultClick = { url ->
+                                    activeTab.url.value = url
+                                    activeScreen = ActiveScreen.BROWSER
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -828,9 +847,7 @@ fun BrowserScreen(activity: MainActivity) {
 }
 
 enum class ActiveScreen {
-    BROWSER,
-    SAFETY_SHIELD,
-    SETTINGS
+    BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH
 }
 
 enum class ShieldMode {
