@@ -68,8 +68,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.collectAsStateCoroutineScope
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
@@ -246,10 +245,12 @@ fun BrowserScreen(activity: MainActivity) {
     var activeScreen by remember { mutableStateOf(ActiveScreen.BROWSER) }
 
     // Shield Features State
-    var adBlocking by remember { mutableStateOf(true) }
-    var antiFingerprint by remember { mutableStateOf(true) }
-    var httpsOnly by remember { mutableStateOf(false) }
-    var shieldMode by remember { mutableStateOf(ShieldMode.STANDARD) }
+    val prefs = LocalContext.current.getSharedPreferences("sanctum_prefs", android.content.Context.MODE_PRIVATE)
+    var adBlocking by remember { mutableStateOf(prefs.getBoolean("adBlocking", true)) }
+    var antiFingerprint by remember { mutableStateOf(prefs.getBoolean("antiFingerprint", true)) }
+    var httpsOnly by remember { mutableStateOf(prefs.getBoolean("httpsOnly", false)) }
+    var shieldMode by remember { mutableStateOf(ShieldMode.valueOf(prefs.getString("shieldMode", ShieldMode.STANDARD.name) ?: ShieldMode.STANDARD.name)) }
+    val totalBlockedCount by BlocklistManager.blockedCount.collectAsState()
     var familyMode by remember { mutableStateOf(true) }
     
     // Native Search State
@@ -257,7 +258,7 @@ fun BrowserScreen(activity: MainActivity) {
     var nativeSearchTokens by remember { mutableStateOf<Map<String, String>?>(null) }
     var nativeImageResults by remember { mutableStateOf<List<ImageSearchResult>>(emptyList()) }
     var currentNativeTab by remember { mutableStateOf("All") }
-    // REPLACED_TOKEN by remember { mutableStateOf<Map<String, String>?>(null) }
+    
     var isNativeSearchLoading by remember { mutableStateOf(false) }
     var isNativeSearchPaging by remember { mutableStateOf(false) }
     var currentNativeQuery by remember { mutableStateOf("") }
