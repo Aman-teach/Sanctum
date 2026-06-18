@@ -67,7 +67,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsStateCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
@@ -701,14 +703,27 @@ fun BrowserScreen(activity: MainActivity) {
                         ActiveScreen.SAFETY_SHIELD -> {
                             SafetyShieldScreen(
                                 context = context,
+                                totalBlockedCount = totalBlockedCount,
                                 adBlocking = adBlocking,
-                                onAdBlockingChange = { adBlocking = it },
+                                onAdBlockingChange = { 
+                                    adBlocking = it 
+                                    prefs.edit().putBoolean("adBlocking", it).apply()
+                                },
                                 antiFingerprint = antiFingerprint,
-                                onAntiFingerprintChange = { antiFingerprint = it },
+                                onAntiFingerprintChange = { 
+                                    antiFingerprint = it 
+                                    prefs.edit().putBoolean("antiFingerprint", it).apply()
+                                },
                                 httpsOnly = httpsOnly,
-                                onHttpsOnlyChange = { httpsOnly = it },
+                                onHttpsOnlyChange = { 
+                                    httpsOnly = it 
+                                    prefs.edit().putBoolean("httpsOnly", it).apply()
+                                },
                                 shieldMode = shieldMode,
-                                onShieldModeChange = { shieldMode = it }
+                                onShieldModeChange = { 
+                                    shieldMode = it 
+                                    prefs.edit().putString("shieldMode", it.name).apply()
+                                }
                             )
                         }
                         ActiveScreen.SETTINGS -> {
@@ -1279,7 +1294,7 @@ fun HomeScreen(
             ProtectionListItem(
                 title = "Ad & Tracker Blocker",
                 source = "StevenBlack Host Filters",
-                status = "1,284 blocked",
+                status = "${String.format("%,d", totalBlockedCount)} blocked",
                 indicator = "Active",
                 onClick = { onShieldClick() }
             )
@@ -1585,6 +1600,7 @@ private fun getErrorResponse(): WebResourceResponse {
 @Composable
 fun SafetyShieldScreen(
     context: android.content.Context,
+    totalBlockedCount: Int,
     adBlocking: Boolean,
     onAdBlockingChange: (Boolean) -> Unit,
     antiFingerprint: Boolean,
@@ -1682,7 +1698,7 @@ fun SafetyShieldScreen(
 
         // Large Counter
         Text(
-            text = "1,284",
+            text = String.format("%,d", totalBlockedCount),
             color = EditorialInk,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,

@@ -2,6 +2,8 @@ package com.example.sanctum
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URI
@@ -12,6 +14,8 @@ object BlocklistManager {
     private val blockedDomains = HashSet<String>()
     private val customBlockedDomains = HashSet<String>()
     private var isInitialized = false
+    private val _blockedCount = MutableStateFlow(0)
+    val blockedCount = _blockedCount.asStateFlow()
 
     fun init(context: Context) {
         if (isInitialized) return
@@ -47,6 +51,7 @@ object BlocklistManager {
                 
                 // Load custom domains from SharedPreferences
                 val prefs = context.getSharedPreferences("sanctum_prefs", Context.MODE_PRIVATE)
+                _blockedCount.value = prefs.getInt("total_blocked_count", 0)
                 val savedCustom = prefs.getStringSet("custom_blocked_domains", null)
                 if (savedCustom != null) {
                     customBlockedDomains.addAll(savedCustom.map { it.lowercase(Locale.US).trim() })
@@ -97,6 +102,12 @@ object BlocklistManager {
         return false
     }
 
+
+    fun incrementBlockedCount(context: Context) {
+        _blockedCount.value += 1
+        val prefs = context.getSharedPreferences("sanctum_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putInt("total_blocked_count", _blockedCount.value).apply()
+    }
     fun getCustomDomains(context: Context): List<String> {
         val prefs = context.getSharedPreferences("sanctum_prefs", Context.MODE_PRIVATE)
         return prefs.getStringSet("custom_blocked_domains", emptySet())?.toList()?.sorted() ?: emptyList()
