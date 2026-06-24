@@ -1,3 +1,4 @@
+import kotlinx.coroutines.launch
 package com.example.sanctum
 
 import androidx.compose.foundation.Image
@@ -110,7 +111,7 @@ fun TabSwitcherScreen(
                                 IconButton(
                                     onClick = {
                                         onCloseTab(index)
-                                        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                        coroutineScope.launch {
                                             val result = snackbarHostState.showSnackbar(
                                                 message = "Closed tab",
                                                 actionLabel = "UNDO",
