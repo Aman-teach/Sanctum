@@ -16,12 +16,14 @@ data class BrowserTab(
     val progress: MutableState<Float> = mutableFloatStateOf(0f),
     val isLoading: MutableState<Boolean> = mutableStateOf(false),
     val canGoBack: MutableState<Boolean> = mutableStateOf(false),
-    val canGoForward: MutableState<Boolean> = mutableStateOf(false)
+    val canGoForward: MutableState<Boolean> = mutableStateOf(false),
+    var snapshot: android.graphics.Bitmap? = null
 )
 
 class TabManager {
     val tabs = mutableStateListOf<BrowserTab>()
     val activeTabIndex = mutableStateOf(0)
+    val recentlyClosed = mutableStateListOf<BrowserTab>()
 
     val activeTab: BrowserTab?
         get() = if (tabs.isNotEmpty() && activeTabIndex.value in tabs.indices) tabs[activeTabIndex.value] else null
@@ -37,13 +39,30 @@ class TabManager {
 
     fun closeTab(index: Int) {
         if (index in tabs.indices) {
-            tabs[index].webView?.destroy()
+            val tab = tabs[index]
+            recentlyClosed.add(tab)
             tabs.removeAt(index)
             if (tabs.isEmpty()) {
                 addTab()
             } else if (activeTabIndex.value >= tabs.size) {
                 activeTabIndex.value = tabs.lastIndex
             }
+        }
+    }
+
+
+    fun undoCloseTab() {
+        if (recentlyClosed.isNotEmpty()) {
+            val tab = recentlyClosed.removeLast()
+            tabs.add(tab)
+            activeTabIndex.value = tabs.lastIndex
+        }
+    }
+
+    fun duplicateTab(index: Int) {
+        if (index in tabs.indices) {
+            val originalUrl = tabs[index].url.value
+            addTab(initialUrl = originalUrl, switchToNew = true)
         }
     }
 

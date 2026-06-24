@@ -1,3 +1,4 @@
+import androidx.compose.material.icons.filled.Security
 package com.example.sanctum
 
 import android.annotation.SuppressLint
@@ -712,6 +713,25 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                         ActiveScreen.SPLASH -> {
                             SplashScreen(onSplashComplete = { activeScreen = ActiveScreen.BROWSER })
                         }
+                        ActiveScreen.TABS -> {
+                            TabSwitcherScreen(
+                                tabManager = tabManager,
+                                onTabSelected = { index ->
+                                    tabManager.switchTab(index)
+                                    activeScreen = ActiveScreen.BROWSER
+                                },
+                                onNewTab = {
+                                    tabManager.addTab()
+                                    activeScreen = ActiveScreen.BROWSER
+                                },
+                                onCloseTab = { index ->
+                                    tabManager.closeTab(index)
+                                },
+                                onUndoClose = {
+                                    tabManager.undoCloseTab()
+                                }
+                            )
+                        }
                         ActiveScreen.BROWSER -> {
                             if (currentUrl == "sanctum://home") {
                                 HomeScreen(
@@ -935,13 +955,38 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     )
                 }
 
-                // Tab 4: Safety Shield / Tabs
+                // Tab 4: Tabs
+                IconButton(
+                    onClick = {
+                        try {
+                            activeTab.webView?.let { wv ->
+                                if (wv.width > 0 && wv.height > 0) {
+                                    val bmp = android.graphics.Bitmap.createBitmap(wv.width, wv.height, android.graphics.Bitmap.Config.ARGB_8888)
+                                    val canvas = android.graphics.Canvas(bmp)
+                                    wv.draw(canvas)
+                                    activeTab.snapshot = bmp
+                                }
+                            }
+                        } catch (e: Exception) {}
+                        activeScreen = ActiveScreen.TABS
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_tabs),
+                        contentDescription = "Tabs",
+                        tint = if (activeScreen == ActiveScreen.TABS) EditorialForest else EditorialMutedInk,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Tab 4.5: Safety Shield
                 IconButton(
                     onClick = { activeScreen = ActiveScreen.SAFETY_SHIELD },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_tabs),
+                        imageVector = androidx.compose.material.icons.Icons.Default.Security,
                         contentDescription = "Safety Shield",
                         tint = shieldTint,
                         modifier = Modifier.size(20.dp).graphicsLayer(scaleX = shieldScale, scaleY = shieldScale)
@@ -975,7 +1020,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
 }
 
 enum class ActiveScreen {
-    SPLASH, BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH
+    SPLASH, BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH, TABS
 }
 
 enum class ShieldMode {
