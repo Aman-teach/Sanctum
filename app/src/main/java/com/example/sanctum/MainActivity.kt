@@ -9,6 +9,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.app.role.RoleManager
+import android.os.Build
+import android.content.Context
+
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -149,6 +153,12 @@ val SecondaryAccent = Color(0xFF8C52FF).copy(alpha = 0.1f)     // Sky-200 light 
 
 class MainActivity : ComponentActivity() {
 
+    private val roleRequestLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // Role request handled
+    }
+
     var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     val fileChooserLauncher = registerForActivityResult(
@@ -175,6 +185,21 @@ class MainActivity : ComponentActivity() {
         // Initialize blocklist
         CoroutineScope(Dispatchers.IO).launch {
             BlocklistManager.init(applicationContext)
+        }
+
+        // Request Default Browser Role
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val prefs = getSharedPreferences("sanctum_prefs", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("hasAskedDefaultBrowser", false)) {
+                val roleManager = getSystemService(RoleManager::class.java)
+                if (roleManager?.isRoleAvailable(RoleManager.ROLE_BROWSER) == true) {
+                    if (!roleManager.isRoleHeld(RoleManager.ROLE_BROWSER)) {
+                        prefs.edit().putBoolean("hasAskedDefaultBrowser", true).apply()
+                        val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_BROWSER)
+                        roleRequestLauncher.launch(intent)
+                    }
+                }
+            }
         }
 
         val intentUrl = intent?.dataString
@@ -295,6 +320,11 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
+
+            // OAuth Bypasses: Spoof User-Agent & Enable 3rd Party Cookies
+            val defaultUserAgent = settings.userAgentString
+            settings.userAgentString = defaultUserAgent.replace("; wv", "")
+            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
