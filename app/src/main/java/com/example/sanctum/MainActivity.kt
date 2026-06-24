@@ -1,5 +1,7 @@
-import androidx.compose.material.icons.filled.Security
 package com.example.sanctum
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.Icons
+
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -960,8 +962,8 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     onClick = {
                         try {
                             activeTab.webView?.let { wv ->
-                                if (wv.width > 0 && wv.height > 0) {
-                                    val bmp = android.graphics.Bitmap.createBitmap(wv.width, wv.height, android.graphics.Bitmap.Config.ARGB_8888)
+                                if (wv.getWidth() > 0 && wv.getHeight() > 0) {
+                                    val bmp = android.graphics.Bitmap.createBitmap(wv.getWidth(), wv.getHeight(), android.graphics.Bitmap.Config.ARGB_8888)
                                     val canvas = android.graphics.Canvas(bmp)
                                     wv.draw(canvas)
                                     activeTab.snapshot = bmp
