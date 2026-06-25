@@ -12,6 +12,16 @@ data class ImageSearchResult(
     val url: String
 )
 
+data class VideoSearchResult(
+    val title: String,
+    val url: String,
+    val thumbnail: String,
+    val duration: String,
+    val publisher: String,
+    val views: Int,
+    val published: String
+)
+
 data class SearchResult(
     val title: String,
     val url: String,
@@ -57,14 +67,12 @@ object SearchEngine {
     suspend fun performImageSearch(query: String): List<ImageSearchResult> = withContext(Dispatchers.IO) {
         try {
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
-            val doc = Jsoup.connect("https://duckduckgo.com/?q=$encodedQuery")
+            val doc = Jsoup.connect("https://html.duckduckgo.com/html/?q=$encodedQuery")
                 .userAgent(USER_AGENT)
                 .timeout(5000)
                 .get()
             
-            val html = doc.html()
-            val vqdMatch = "vqd=([\'\"]?)([^\'\"&\\s]+)\\1".toRegex().find(html)
-            val vqd = vqdMatch?.groups?.get(2)?.value
+            val vqd = doc.select("input[name=vqd]").first()?.attr("value")
             
             if (vqd != null) {
                 val jsonStr = Jsoup.connect("https://duckduckgo.com/i.js?o=json&q=$encodedQuery&vqd=$vqd")
@@ -93,6 +101,60 @@ object SearchEngine {
                     }
                 }
                 images
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun performVideoSearch(query: String): List<VideoSearchResult> = withContext(Dispatchers.IO) {
+        try {
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val doc = Jsoup.connect("https://html.duckduckgo.com/html/?q=$encodedQuery")
+                .userAgent(USER_AGENT)
+                .timeout(5000)
+                .get()
+            
+            val vqd = doc.select("input[name=vqd]").first()?.attr("value")
+            
+            if (vqd != null) {
+                val jsonStr = Jsoup.connect("https://duckduckgo.com/v.js?o=json&q=$encodedQuery&vqd=$vqd")
+                    .userAgent(USER_AGENT)
+                    .ignoreContentType(true)
+                    .execute()
+                    .body()
+                
+                val jsonObject = org.json.JSONObject(jsonStr)
+                val resultsArray = jsonObject.optJSONArray("results")
+                val videos = mutableListOf<VideoSearchResult>()
+                
+                if (resultsArray != null) {
+                    for (i in 0 until resultsArray.length()) {
+                        val item = resultsArray.optJSONObject(i)
+                        if (item != null) {
+                            val images = item.optJSONObject("images")
+                            val thumbnail = images?.optString("medium") ?: images?.optString("large") ?: ""
+                            val stats = item.optJSONObject("statistics")
+                            val views = stats?.optInt("viewCount") ?: 0
+                            
+                            videos.add(
+                                VideoSearchResult(
+                                    title = item.optString("title"),
+                                    url = item.optString("content"),
+                                    thumbnail = thumbnail,
+                                    duration = item.optString("duration"),
+                                    publisher = item.optString("publisher"),
+                                    views = views,
+                                    published = item.optString("published")
+                                )
+                            )
+                        }
+                    }
+                }
+                videos
             } else {
                 emptyList()
             }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -12,6 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +34,7 @@ fun NativeSearchScreen(
     query: String,
     results: List<SearchResult>,
     imageResults: List<ImageSearchResult>,
+    videoResults: List<VideoSearchResult>,
     currentTab: String,
     isLoading: Boolean,
     hasNextPage: Boolean,
@@ -42,15 +48,45 @@ fun NativeSearchScreen(
             .fillMaxSize()
             .background(Color(0xFFFFFFFF)) // Google-like super light gray background
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Results for \"$query\"",
-            fontSize = 18.sp,
-            fontFamily = Inter,
-            color = EditorialMutedInk,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Search Pill Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .background(Color.White, RoundedCornerShape(24.dp))
+                .border(1.dp, Color(0xFFDFE1E5), RoundedCornerShape(24.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = Color(0xFF9AA0A6),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = query,
+                fontSize = 16.sp,
+                fontFamily = Inter,
+                color = Color(0xFF202124),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Clear",
+                tint = Color(0xFF9AA0A6),
+                modifier = Modifier.size(20.dp)
+                // In a real app this would trigger an event to clear search
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         val tabs = listOf("All", "Images", "Videos", "News", "Maps")
         val selectedIndex = tabs.indexOf(currentTab).takeIf { it >= 0 } ?: 0
@@ -65,7 +101,7 @@ fun NativeSearchScreen(
             indicator = { tabPositions ->
                 SecondaryIndicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
-                    color = Color(0xFF8C52FF)
+                    color = Color(0xFF1A73E8) // Standard Blue
                 )
             }
         ) {
@@ -77,19 +113,36 @@ fun NativeSearchScreen(
                         Text(
                             text = title, 
                             fontFamily = Inter, 
-                            fontWeight = if (title == currentTab) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (title == currentTab) Color(0xFF8C52FF) else EditorialMutedInk
+                            fontWeight = if (title == currentTab) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (title == currentTab) Color(0xFF1A73E8) else Color(0xFF5F6368),
+                            fontSize = 14.sp
                         ) 
                     }
                 )
             }
         }
         
-        HorizontalDivider(color = Color(0xFF8C52FF).copy(alpha = 0.2f), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFFEBEBEB), thickness = 1.dp)
 
-        if (isLoading && results.isEmpty() && imageResults.isEmpty()) {
+        if (isLoading && results.isEmpty() && imageResults.isEmpty() && videoResults.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF8C52FF))
+                CircularProgressIndicator(color = Color(0xFF1A73E8))
+            }
+        } else if (currentTab == "Videos") {
+            if (videoResults.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No videos found.", fontFamily = Inter, color = EditorialMutedInk)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(videoResults) { video ->
+                        VideoSearchResultCard(video, onResultClick)
+                    }
+                }
             }
         } else if (currentTab == "Images") {
             if (imageResults.isEmpty()) {
@@ -113,7 +166,7 @@ fun NativeSearchScreen(
                                 .fillMaxWidth()
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { onResultClick(img.image) }
+                                .clickable { onResultClick(img.url) }
                         )
                     }
                 }
@@ -136,9 +189,9 @@ fun NativeSearchScreen(
                     SearchResultCard(result, onResultClick)
                     if (index < results.size - 1) {
                         HorizontalDivider(
-                            color = Color(0xFF8C52FF).copy(alpha = 0.2f), 
+                            color = Color(0xFFEBEBEB), 
                             thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 12.dp)
+                            modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
                 }
@@ -152,15 +205,15 @@ fun NativeSearchScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isPaging) {
-                                CircularProgressIndicator(color = Color(0xFF8C52FF))
+                                CircularProgressIndicator(color = Color(0xFF1A73E8))
                             } else {
                                 Button(
                                     onClick = onLoadMore,
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8C52FF)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A73E8)),
                                     shape = RoundedCornerShape(24.dp),
-                                    modifier = Modifier.height(48.dp)
+                                    modifier = Modifier.height(40.dp)
                                 ) {
-                                    Text("Load more results", fontFamily = Inter, fontWeight = FontWeight.Medium, color = Color.White)
+                                    Text("Load more results", fontFamily = Inter, fontWeight = FontWeight.Medium, color = Color.White, fontSize = 14.sp)
                                 }
                             }
                         }
@@ -176,7 +229,7 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(4.dp))
             .clickable { onClick(result.url) }
             .padding(vertical = 4.dp, horizontal = 4.dp)
     ) {
@@ -185,19 +238,19 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
             text = result.url.replace("https://", "").replace("http://", "").substringBefore("/"),
             fontSize = 12.sp,
             fontFamily = Inter,
-            color = Color(0xFF8C52FF), // Google Dark
+            color = Color(0xFF202124), // Dark gray URL
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(4.dp))
         
-        // Title (Pro Blue)
+        // Title (Google Title Blue)
         Text(
             text = result.title,
-            fontSize = 20.sp,
+            fontSize = 18.sp, // Reduced from 20.sp
             fontWeight = FontWeight.Normal,
             fontFamily = Inter,
-            color = Color(0xFF8C52FF), // Google Title Blue
+            color = Color(0xFF1A0DAB), // Standard blue
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -206,12 +259,85 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
         // Snippet
         Text(
             text = result.snippet,
-            fontSize = 14.sp,
+            fontSize = 13.sp, // Reduced from 14.sp
             fontFamily = Inter,
-            color = Color(0xFF8C52FF).copy(alpha = 0.8f), // Google Snippet Gray
-            lineHeight = 20.sp,
+            color = Color(0xFF4D5156), // Standard gray
+            lineHeight = 18.sp, // Reduced from 20.sp
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun VideoSearchResultCard(video: VideoSearchResult, onClick: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick(video.url) }
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AsyncImage(
+                model = video.thumbnail,
+                contentDescription = video.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            // Duration overlay
+            if (video.duration.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = video.duration,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontFamily = Inter,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = video.title,
+            fontSize = 16.sp,
+            fontFamily = Inter,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF202124),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        val viewsText = if (video.views > 0) {
+            val v = video.views
+            when {
+                v >= 1000000 -> "${v / 1000000}M views"
+                v >= 1000 -> "${v / 1000}K views"
+                else -> "$v views"
+            }
+        } else ""
+        
+        val metaText = listOf(video.publisher, video.published, viewsText)
+            .filter { it.isNotEmpty() }
+            .joinToString(" • ")
+            
+        Text(
+            text = metaText,
+            fontSize = 13.sp,
+            fontFamily = Inter,
+            color = Color(0xFF5F6368),
+            modifier = Modifier.padding(horizontal = 4.dp)
         )
     }
 }

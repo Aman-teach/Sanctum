@@ -1,9 +1,17 @@
 package com.example.sanctum
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.Icons
-
 
 import android.annotation.SuppressLint
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Close
+import com.example.sanctum.ui.theme.SurfaceContainerHigh
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.ViewGroup
@@ -67,6 +75,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -146,13 +155,13 @@ val AppTypography = Typography(
 )
 
 // Premium Slate-Fintech Color Palette
-val EditorialPaper = Color(0xFFFFFFFF)      // Slate-50 background
-val EditorialSurface = Color(0xFFFFFFFF)    // Slate-100 surface
-val EditorialInk = Color(0xFF8C52FF)        // Slate-900 primary text/charcoal
-val EditorialMutedInk = Color(0xFF8C52FF).copy(alpha = 0.6f)   // Slate-500 secondary text
-val EditorialForest = Color(0xFF8C52FF)     // Primary slate color
-val EditorialBorder = Color(0xFF8C52FF).copy(alpha = 0.2f)     // Slate-200 border/lines
-val SecondaryAccent = Color(0xFF8C52FF).copy(alpha = 0.1f)     // Sky-200 light blue
+val EditorialPaper = Color(0xFFFCFCFA)      // Soft book page white
+val EditorialSurface = Color(0xFFF6F6F2)    // Warm sand/clay surface
+val EditorialInk = Color(0xFF1E1E1E)        // Deep letterpress charcoal ink
+val EditorialMutedInk = Color(0xFF6B6B67)   // Soft graphite gray
+val EditorialForest = Color(0xFF2E4035)     // Editorial accent forest green
+val EditorialBorder = Color(0xFFE6E6E1)     // Soft separator lines
+val SecondaryAccent = Color(0xFFB5DECA)     // Mint/sage secondary accent
 
 class MainActivity : ComponentActivity() {
 
@@ -188,6 +197,9 @@ class MainActivity : ComponentActivity() {
         // Initialize blocklist
         CoroutineScope(Dispatchers.IO).launch {
             BlocklistManager.init(applicationContext)
+            HistoryManager.init(applicationContext)
+            BookmarkManager.init(applicationContext)
+            PreferencesManager.init(applicationContext)
         }
 
         // Request Default Browser Role
@@ -243,6 +255,12 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     
     var currentUrl by activeTab.url
     var inputText by remember { mutableStateOf("") }
+    var showMenu by remember { mutableStateOf(false) }
+    var showFindInPage by remember { mutableStateOf(false) }
+    var findQuery by remember { mutableStateOf("") }
+    
+    val desktopMode by PreferencesManager.desktopMode.collectAsState()
+    val thirdPartyCookies by PreferencesManager.thirdPartyCookies.collectAsState()
     
 
     
@@ -254,6 +272,18 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     var canGoBack by activeTab.canGoBack
     var canGoForward by activeTab.canGoForward
     var webViewRef = activeTab.webView
+    
+    LaunchedEffect(desktopMode, thirdPartyCookies) {
+        tabManager.tabs.forEach { tab ->
+            tab.webView?.let { wv ->
+                val defaultUserAgent = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+                val desktopAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
+                wv.settings.userAgentString = if (desktopMode) desktopAgent else defaultUserAgent
+                android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, thirdPartyCookies)
+                wv.reload()
+            }
+        }
+    }
     
     // Sync inputText with active tab's URL
     LaunchedEffect(currentUrl) {
@@ -297,12 +327,25 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     var nativeSearchResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
     var nativeSearchTokens by remember { mutableStateOf<Map<String, String>?>(null) }
     var nativeImageResults by remember { mutableStateOf<List<ImageSearchResult>>(emptyList()) }
+    var nativeVideoResults by remember { mutableStateOf<List<VideoSearchResult>>(emptyList()) }
     var currentNativeTab by remember { mutableStateOf("All") }
     
     var isNativeSearchLoading by remember { mutableStateOf(false) }
     var isNativeSearchPaging by remember { mutableStateOf(false) }
     var currentNativeQuery by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    
+    val history by HistoryManager.history.collectAsState()
+    val topSites = remember(history) {
+        history.filter { it.url != "about:blank" && it.url.isNotEmpty() }
+            .distinctBy { android.net.Uri.parse(it.url).host ?: it.url }
+            .take(3) // take 3 to leave room for the Add button
+    }
+    var newsFeed by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    
+    LaunchedEffect(Unit) {
+        newsFeed = NewsFetcher.fetchTechNews()
+    }
 
     // Instantiated once per BrowserScreen lifecycle and reused to prevent startup blank screen flash
     fun createWebViewForTab(): WebView {
@@ -324,10 +367,16 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
 
-            // OAuth Bypasses: Spoof User-Agent & Enable 3rd Party Cookies
+            // OAuth Bypasses & Settings
             val defaultUserAgent = settings.userAgentString
-            settings.userAgentString = defaultUserAgent.replace("; wv", "")
-            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+            val desktopAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
+            val mobileAgent = defaultUserAgent.replace("; wv", "")
+            
+            settings.userAgentString = if (PreferencesManager.desktopMode.value) desktopAgent else mobileAgent
+            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, PreferencesManager.thirdPartyCookies.value)
+
+            // Register JS interface for Blob downloads
+            addJavascriptInterface(BlobDownloadHelper(context), "AndroidBlobDownloader")
 
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
@@ -461,25 +510,34 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
             }
 
             setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
-                try {
-                    val request = DownloadManager.Request(Uri.parse(url)).apply {
-                        setMimeType(mimetype)
-                        val cookies = android.webkit.CookieManager.getInstance().getCookie(url)
-                        addRequestHeader("cookie", cookies)
-                        addRequestHeader("User-Agent", userAgent)
-                        setDescription("Downloading file...")
-                        setTitle(URLUtil.guessFileName(url, contentDisposition, mimetype))
-                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        setDestinationInExternalPublicDir(
-                            Environment.DIRECTORY_DOWNLOADS,
-                            URLUtil.guessFileName(url, contentDisposition, mimetype)
-                        )
+                if (url.startsWith("blob:") || url.startsWith("data:")) {
+                    // Inject JS to fetch blob data and pass it to our native JavascriptInterface
+                    val jsSnippet = BlobDownloadHelper.getBlobJavascriptSnippet(url, mimetype, contentDisposition)
+                    evaluateJavascript(jsSnippet, null)
+                    Toast.makeText(context, "Preparing blob download...", Toast.LENGTH_SHORT).show()
+                } else {
+                    try {
+                        val request = DownloadManager.Request(Uri.parse(url)).apply {
+                            setMimeType(mimetype)
+                            val cookies = android.webkit.CookieManager.getInstance().getCookie(url)
+                            if (cookies != null) {
+                                addRequestHeader("cookie", cookies)
+                            }
+                            addRequestHeader("User-Agent", userAgent)
+                            setDescription("Downloading file...")
+                            setTitle(android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype))
+                            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            setDestinationInExternalPublicDir(
+                                Environment.DIRECTORY_DOWNLOADS,
+                                android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype)
+                            )
+                        }
+                        val dm = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
+                        dm.enqueue(request)
+                        Toast.makeText(context, "Download started...", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
                     }
-                    val dm = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
-                    dm.enqueue(request)
-                    Toast.makeText(context, "Download started...", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -599,17 +657,27 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                                 var query = inputText.trim()
                                 if (query.isNotEmpty()) {
                                     if (!query.contains(".") || query.contains(" ")) {
-                                        currentNativeQuery = query
-                                        activeScreen = ActiveScreen.NATIVE_SEARCH
-                                        currentNativeTab = "All"
-                                        isNativeSearchLoading = true
-                                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                                            val response = SearchEngine.performSearch(query)
-                                            nativeSearchResults = response.results
-                                            nativeSearchTokens = response.nextTokens
-                                            isNativeSearchLoading = false
+                                        val engine = PreferencesManager.searchEngine.value
+                                        if (engine == "DuckDuckGo") {
+                                            currentNativeQuery = query
+                                            activeScreen = ActiveScreen.NATIVE_SEARCH
+                                            currentNativeTab = "All"
+                                            isNativeSearchLoading = true
+                                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                                val response = SearchEngine.performSearch(query)
+                                                nativeSearchResults = response.results
+                                                nativeSearchTokens = response.nextTokens
+                                                isNativeSearchLoading = false
+                                            }
+                                            return@KeyboardActions
+                                        } else {
+                                            val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+                                            query = if (engine == "Google") {
+                                                "https://www.google.com/search?q=$encoded"
+                                            } else {
+                                                "https://www.bing.com/search?q=$encoded"
+                                            }
                                         }
-                                        return@KeyboardActions
                                     } else if (!query.startsWith("http://") && !query.startsWith("https://")) {
                                         query = "https://$query"
                                     }
@@ -683,6 +751,41 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
             }
 
             // Content Frame
+            if (showFindInPage) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceContainerHigh)
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = findQuery,
+                        onValueChange = { 
+                            findQuery = it
+                            webViewRef?.findAllAsync(it)
+                        },
+                        placeholder = { Text("Find in page") },
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        singleLine = true,
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { webViewRef?.findAllAsync(findQuery) })
+                    )
+                    IconButton(onClick = { webViewRef?.findNext(false) }) {
+                        Icon(Icons.Default.KeyboardArrowUp, "Previous")
+                    }
+                    IconButton(onClick = { webViewRef?.findNext(true) }) {
+                        Icon(Icons.Default.KeyboardArrowDown, "Next")
+                    }
+                    IconButton(onClick = { 
+                        showFindInPage = false
+                        webViewRef?.clearMatches() 
+                        findQuery = ""
+                    }) {
+                        Icon(Icons.Default.Close, "Close")
+                    }
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -738,19 +841,35 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                             if (currentUrl == "sanctum://home") {
                                 HomeScreen(
                                     totalBlockedCount = totalBlockedCount,
+                                    topSites = topSites,
+                                    newsFeed = newsFeed,
                                     onSearchSubmit = { query ->
                                         var formattedQuery = query.trim()
                                         if (formattedQuery.isNotEmpty()) {
                                             if (!formattedQuery.contains(".") || formattedQuery.contains(" ")) {
-                                                currentNativeQuery = formattedQuery
-                                                activeScreen = ActiveScreen.NATIVE_SEARCH
-                                                currentNativeTab = "All"
-                                                isNativeSearchLoading = true
-                                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                                                    val response = SearchEngine.performSearch(formattedQuery)
-                                                    nativeSearchResults = response.results
-                                                    nativeSearchTokens = response.nextTokens
-                                                    isNativeSearchLoading = false
+                                                val engine = PreferencesManager.searchEngine.value
+                                                if (engine == "DuckDuckGo") {
+                                                    currentNativeQuery = formattedQuery
+                                                    activeScreen = ActiveScreen.NATIVE_SEARCH
+                                                    currentNativeTab = "All"
+                                                    isNativeSearchLoading = true
+                                                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                                        val response = SearchEngine.performSearch(formattedQuery)
+                                                        nativeSearchResults = response.results
+                                                        nativeSearchTokens = response.nextTokens
+                                                        isNativeSearchLoading = false
+                                                    }
+                                                } else {
+                                                    val encoded = java.net.URLEncoder.encode(formattedQuery, "UTF-8")
+                                                    val url = if (engine == "Google") {
+                                                        "https://www.google.com/search?q=$encoded"
+                                                    } else {
+                                                        "https://www.bing.com/search?q=$encoded"
+                                                    }
+                                                    isLoading = true
+                                                    progress = 0.1f
+                                                    currentUrl = url
+                                                    inputText = url
                                                 }
                                             } else {
                                                 if (!formattedQuery.startsWith("http://") && !formattedQuery.startsWith("https://")) {
@@ -795,11 +914,48 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                                 }
                             )
                         }
+                        ActiveScreen.HISTORY -> {
+                            HistoryScreen(
+                                context = context,
+                                onBack = { activeScreen = ActiveScreen.BROWSER },
+                                onNavigate = { url ->
+                                    currentUrl = url
+                                    inputText = url
+                                    activeScreen = ActiveScreen.BROWSER
+                                    isLoading = true
+                                    progress = 0.1f
+                                }
+                            )
+                        }
+                        ActiveScreen.BOOKMARKS -> {
+                            BookmarksScreen(
+                                context = context,
+                                onBack = { activeScreen = ActiveScreen.BROWSER },
+                                onNavigate = { url ->
+                                    currentUrl = url
+                                    inputText = url
+                                    activeScreen = ActiveScreen.BROWSER
+                                    isLoading = true
+                                    progress = 0.1f
+                                }
+                            )
+                        }
+                        ActiveScreen.DOWNLOADS -> {
+                            DownloadsScreen(
+                                context = context,
+                                onBack = { activeScreen = ActiveScreen.BROWSER }
+                            )
+                        }
                         ActiveScreen.SETTINGS -> {
                             SettingsScreen(
                                 context = context,
                                 familyMode = familyMode,
                                 onFamilyModeChange = { familyMode = it },
+                                onClearData = {
+                                    HistoryManager.clearHistory(context)
+                                    webViewRef?.clearCache(true)
+                                    android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                                },
                                 onBack = { activeScreen = ActiveScreen.BROWSER }
                             )
                         }
@@ -808,6 +964,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                                 query = currentNativeQuery,
                                 results = nativeSearchResults,
                                 imageResults = nativeImageResults,
+                                videoResults = nativeVideoResults,
                                 currentTab = currentNativeTab,
                                 isLoading = isNativeSearchLoading,
                                 hasNextPage = nativeSearchTokens != null,
@@ -837,13 +994,20 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                                                 isNativeSearchLoading = false
                                             }
                                         }
+                                    } else if (tabName == "Videos") {
+                                        if (nativeVideoResults.isEmpty()) {
+                                            isNativeSearchLoading = true
+                                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                                nativeVideoResults = SearchEngine.performVideoSearch(currentNativeQuery)
+                                                isNativeSearchLoading = false
+                                            }
+                                        }
                                     } else if (tabName != "All") {
                                         var encoded = ""
                                         try {
                                             encoded = java.net.URLEncoder.encode(currentNativeQuery, "UTF-8")
                                         } catch (e: Exception) {}
                                         val iaParam = when (tabName) {
-                                            "Videos" -> "videos"
                                             "News" -> "news"
                                             "Maps" -> "maps"
                                             else -> "web"
@@ -905,10 +1069,11 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .background(Color.White)
-                    .border(1.dp, EditorialBorder, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .height(64.dp)
+                    .background(EditorialPaper, RoundedCornerShape(32.dp))
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(32.dp))
+                    .padding(horizontal = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -916,13 +1081,13 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                 IconButton(
                     onClick = { webViewRef?.goBack() },
                     enabled = showWebView && canGoBack,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_back),
+                        imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Back",
                         tint = backTint,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -930,13 +1095,13 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                 IconButton(
                     onClick = { webViewRef?.goForward() },
                     enabled = showWebView && canGoForward,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_forward),
+                        imageVector = Icons.Default.ArrowForward,
                         contentDescription = "Forward",
                         tint = forwardTint,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -947,13 +1112,13 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                         currentUrl = "sanctum://home"
                         inputText = ""
                     },
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_search),
+                        imageVector = Icons.Default.Search,
                         contentDescription = "Search",
                         tint = searchTint,
-                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = searchScale, scaleY = searchScale)
+                        modifier = Modifier.size(26.dp).graphicsLayer(scaleX = searchScale, scaleY = searchScale)
                     )
                 }
 
@@ -972,42 +1137,79 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                         } catch (e: Exception) {}
                         activeScreen = ActiveScreen.TABS
                     },
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_tabs),
+                        imageVector = Icons.Default.List,
                         contentDescription = "Tabs",
                         tint = if (activeScreen == ActiveScreen.TABS) EditorialForest else EditorialMutedInk,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
                 // Tab 4.5: Safety Shield
                 IconButton(
                     onClick = { activeScreen = ActiveScreen.SAFETY_SHIELD },
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Default.Security,
+                        imageVector = Icons.Default.Security,
                         contentDescription = "Safety Shield",
                         tint = shieldTint,
-                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = shieldScale, scaleY = shieldScale)
+                        modifier = Modifier.size(24.dp).graphicsLayer(scaleX = shieldScale, scaleY = shieldScale)
                     )
                 }
 
-                // Tab 5: Settings / Menu dots
+                // Tab 5: Settings / More
                 IconButton(
-                    onClick = { activeScreen = ActiveScreen.SETTINGS },
-                    modifier = Modifier.size(40.dp)
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_menu_dots),
-                        contentDescription = "Settings",
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Menu",
                         tint = settingsTint,
-                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = settingsScale, scaleY = settingsScale)
+                        modifier = Modifier.size(26.dp).graphicsLayer(scaleX = settingsScale, scaleY = settingsScale)
                     )
                 }
             }
+        }
+
+        if (showMenu) {
+            BrowserMenuSheet(
+                onDismissRequest = { showMenu = false },
+                onReload = { webViewRef?.reload(); showMenu = false },
+                onNewTab = { tabManager.addTab(); activeScreen = ActiveScreen.BROWSER; showMenu = false },
+                onSettings = { activeScreen = ActiveScreen.SETTINGS; showMenu = false },
+                onHistory = { activeScreen = ActiveScreen.HISTORY; showMenu = false },
+                onBookmarkAdd = {
+                    currentUrl.takeIf { it.isNotBlank() && !it.startsWith("sanctum://") }?.let { url ->
+                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            BookmarkManager.addBookmark(context, url, webViewRef?.title ?: url)
+                        }
+                    }
+                    showMenu = false
+                },
+                onBookmarksView = { activeScreen = ActiveScreen.BOOKMARKS; showMenu = false },
+                onDownloadsView = { activeScreen = ActiveScreen.DOWNLOADS; showMenu = false },
+                onShare = {
+                    val shareIntent = android.content.Intent().apply {
+                        action = android.content.Intent.ACTION_SEND
+                        putExtra(android.content.Intent.EXTRA_TEXT, currentUrl)
+                        type = "text/plain"
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share via"))
+                },
+                onCopyLink = {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("URL", currentUrl)
+                    clipboard.setPrimaryClip(clip)
+                    android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onFindInPage = { showFindInPage = true },
+                desktopMode = desktopMode,
+                onDesktopModeToggle = { PreferencesManager.setDesktopMode(it) }
+            )
         }
 
         // Shield Details dialog
@@ -1022,7 +1224,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
 }
 
 enum class ActiveScreen {
-    SPLASH, BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH, TABS
+    SPLASH, BROWSER, SAFETY_SHIELD, SETTINGS, NATIVE_SEARCH, TABS, HISTORY, BOOKMARKS, DOWNLOADS
 }
 
 enum class ShieldMode {
@@ -1032,7 +1234,7 @@ enum class ShieldMode {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
+/* @Composable
 fun HomeScreen(
     totalBlockedCount: Int,
     onSearchSubmit: (String) -> Unit,
@@ -1271,7 +1473,18 @@ fun HomeScreen(
                 onSearch = {
                     focusManager.clearFocus()
                     if (homeSearchText.trim().isNotEmpty()) {
-                        onSearchSubmit(homeSearchText)
+                        val engine = PreferencesManager.searchEngine.value
+                        if (engine == "DuckDuckGo") {
+                            onSearchSubmit(homeSearchText)
+                        } else {
+                            val encoded = java.net.URLEncoder.encode(homeSearchText.trim(), "UTF-8")
+                            val url = if (engine == "Google") {
+                                "https://www.google.com/search?q=$encoded"
+                            } else {
+                                "https://www.bing.com/search?q=$encoded"
+                            }
+                            onSearchSubmit(url)
+                        }
                     }
                 }
             ),
@@ -1522,7 +1735,7 @@ fun HomeScreen(
         }
         Spacer(modifier = Modifier.height(20.dp))
     }
-}
+} */
 
 @Composable
 fun TrendingListItem(
@@ -1692,7 +1905,7 @@ private fun getErrorResponse(): WebResourceResponse {
     return WebResourceResponse("text/html", "UTF-8", errorHtml.byteInputStream())
 }
 
-@Composable
+/* @Composable
 fun SafetyShieldScreen(
     context: android.content.Context,
     totalBlockedCount: Int,
@@ -1994,7 +2207,7 @@ fun SafetyShieldScreen(
         }
         Spacer(modifier = Modifier.height(20.dp))
     }
-}
+} */
 
 @Composable
 fun StatItem(
@@ -2121,7 +2334,7 @@ fun ShieldModeItem(
     }
 }
 
-@Composable
+/* @Composable
 fun SettingsScreen(
     context: android.content.Context,
     familyMode: Boolean,
@@ -2512,7 +2725,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(40.dp))
     }
-}
+} */
 
 @Composable
 fun SettingsNavigationRow(
