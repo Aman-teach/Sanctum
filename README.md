@@ -2,7 +2,7 @@
 
 **A premium, privacy-first Android browser with built-in DNS-over-HTTPS (DoH) safety filters, SafeSearch enforcement, URL keyword blocking, and a sleek iOS-inspired card UI.**
 
-### 📥 [Download Sanctum APK (v2.5.0)](https://github.com/Aman-teach/Sanctum/releases/download/v2.5.0/Sanctum_Browser_v17.apk)
+### 📥 [Download Sanctum APK (v2.5.1)](https://github.com/Aman-teach/Sanctum/releases/latest)
 
 ---
 
@@ -14,8 +14,20 @@ Sanctum features a warm-light "Editorial" theme, tailored for legibility and vis
 * **Subtle Micro-Animations**:
   * **Screen Switch Crossfade**: Elegant `220ms` screen-switching transitions.
   * **Bottom Navigation Pop**: Dynamic icon scaling (to `1.15x`) and smooth color-morph transitions.
+  * **Interactive Bouncing**: Custom `combinedBounceClick` animations for standard taps and long-press interactions.
   * **Pulsing Safety Dot**: Continuous pulsing dot (alpha sweeps between `0.4` and `1.0`) reflecting real-time traffic filtering.
   * **Slide-Up Bottom Sheets**: Slide-and-fade dialogue for site security checks and browser quick actions (Share, Copy Link, Desktop Mode).
+
+---
+
+## ⚡ v2.5.1 Engine & Performance Upgrades
+
+* **Advanced Bot Evasion**: Injects a specialized JavaScript execution on page start that nullifies `navigator.webdriver` flags, ensuring the WebView bypasses automated bot scanners (Cloudflare, reCAPTCHA).
+* **Hardware Accelerated Engine**: Explicitly forces `LAYER_TYPE_HARDWARE` on the core WebView to offload rendering to the GPU, dramatically increasing scroll and animation frame rates.
+* **Aggressive Caching**: Enabled `WebSettings.LOAD_DEFAULT` caching protocols for rapid subsequent page loads.
+* **Dynamic Quick Access Hub**: Users can manually save up to 5 favorite URLs (with custom names and scraped logos) to a beautifully rendered Home Screen grid. Long-pressing any icon triggers a sleek removal dialog.
+* **Contextual Greetings**: The Home Screen header dynamically changes its messaging based on the current time of day.
+* **Compacted UI Mode**: The Settings and Safety Shield screens have been fully overhauled to use tighter paddings, refined typography, and smaller icons, matching a modern, space-efficient aesthetic.
 
 ---
 
