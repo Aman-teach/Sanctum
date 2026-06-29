@@ -83,6 +83,20 @@ object HistoryManager {
         save(context)
     }
 
+    fun removeAllHistoryForUrl(context: Context, url: String) {
+        val current = _history.value.toMutableList()
+        val host = try {
+            android.net.Uri.parse(url).host
+        } catch (e: Exception) {
+            null
+        }
+        current.removeAll { 
+            it.url == url || (host != null && try { android.net.Uri.parse(it.url).host == host } catch(ex: Exception) { false }) 
+        }
+        _history.value = current
+        save(context)
+    }
+
     fun clearHistory(context: Context) {
         _history.value = emptyList()
         save(context)

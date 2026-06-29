@@ -42,44 +42,31 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(Surface)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         // Header
         Text(
             text = "Settings",
-            fontSize = 24.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = OnSurface,
-            modifier = Modifier.padding(bottom = 4.dp)
+            modifier = Modifier.padding(bottom = 2.dp)
         )
         Text(
             text = "Manage your browser preferences and account details.",
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             color = OnSurfaceVariant,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
         // General Section
         SettingsSectionHeader("General")
         SettingsCard {
             SettingsRow(
-                icon = Icons.Default.AccountCircle,
-                title = "Sync and Google Services",
-                subtitle = "Not logged in",
-                onClick = { android.widget.Toast.makeText(context, "Coming Soon", android.widget.Toast.LENGTH_SHORT).show() }
-            )
-            Divider(color = SurfaceVariant, modifier = Modifier.padding(start = 56.dp))
-            SettingsRow(
                 icon = Icons.Default.Search,
                 title = "Search Engine",
                 value = searchEngine,
                 onClick = { showSearchEngineDialog = true }
-            )
-            Divider(color = SurfaceVariant, modifier = Modifier.padding(start = 56.dp))
-            SettingsRow(
-                icon = Icons.Default.Lock,
-                title = "Password Manager",
-                onClick = { android.widget.Toast.makeText(context, "Coming Soon", android.widget.Toast.LENGTH_SHORT).show() }
             )
         }
 
@@ -221,11 +208,11 @@ fun SettingsScreen(
 fun SettingsSectionHeader(title: String) {
     Text(
         text = title.uppercase(),
-        fontSize = 12.sp,
+        fontSize = 10.sp,
         fontWeight = FontWeight.Bold,
         color = Primary,
         letterSpacing = 1.sp,
-        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
     )
 }
 
@@ -253,20 +240,20 @@ fun SettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = OnSurfaceVariant,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontSize = 16.sp, color = OnSurface)
+            Text(text = title, fontSize = 14.sp, color = OnSurface)
             if (subtitle != null) {
-                Text(text = subtitle, fontSize = 12.sp, color = OnSurfaceVariant)
+                Text(text = subtitle, fontSize = 11.sp, color = OnSurfaceVariant)
             }
         }
         if (value != null) {
@@ -292,20 +279,20 @@ fun SettingsToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = OnSurfaceVariant,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontSize = 16.sp, color = OnSurface)
+            Text(text = title, fontSize = 14.sp, color = OnSurface)
             if (subtitle != null) {
-                Text(text = subtitle, fontSize = 12.sp, color = OnSurfaceVariant)
+                Text(text = subtitle, fontSize = 11.sp, color = OnSurfaceVariant)
             }
         }
         Switch(

@@ -16,6 +16,24 @@ object KeywordFilter {
     )
 
     /**
+     * Checks if raw text (like a search query) contains explicit keywords.
+     */
+    fun containsExplicitKeywordInText(text: String): Boolean {
+        val lowerText = text.lowercase(Locale.US)
+        // Check for standalone words to avoid blocking "essex" when "sex" is banned
+        // But for simplicity and strictness, checking substring might block some innocent words.
+        // We'll use a word boundary regex to be safe and accurate.
+        for (keyword in explicitKeywords) {
+            val regex = Regex("\\b$keyword\\b", RegexOption.IGNORE_CASE)
+            if (regex.containsMatchIn(lowerText)) {
+                Log.w(TAG, "Blocked text containing explicit keyword: $keyword")
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
      * Checks if a URL contains explicit keywords.
      * Ignore query parameters of search engines (since SafeSearch handles those).
      */

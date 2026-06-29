@@ -15,6 +15,7 @@ object PreferencesManager {
     private const val KEY_DO_NOT_TRACK = "do_not_track"
     private const val KEY_DESKTOP_MODE = "desktop_mode"
     private const val KEY_THEME = "theme_mode" // "System", "Light", "Dark"
+    private const val KEY_FAMILY_MODE = "family_mode"
 
     private lateinit var prefs: SharedPreferences
 
@@ -33,6 +34,9 @@ object PreferencesManager {
     private val _theme = MutableStateFlow("System")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
+    private val _familyMode = MutableStateFlow(false)
+    val familyMode: StateFlow<Boolean> = _familyMode.asStateFlow()
+
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         _searchEngine.value = prefs.getString(KEY_SEARCH_ENGINE, "DuckDuckGo") ?: "DuckDuckGo"
@@ -40,6 +44,7 @@ object PreferencesManager {
         _doNotTrack.value = prefs.getBoolean(KEY_DO_NOT_TRACK, true)
         _desktopMode.value = prefs.getBoolean(KEY_DESKTOP_MODE, false)
         _theme.value = prefs.getString(KEY_THEME, "System") ?: "System"
+        _familyMode.value = prefs.getBoolean(KEY_FAMILY_MODE, false)
     }
 
     fun setSearchEngine(engine: String) {
@@ -65,5 +70,10 @@ object PreferencesManager {
     fun setTheme(themeMode: String) {
         prefs.edit().putString(KEY_THEME, themeMode).apply()
         _theme.value = themeMode
+    }
+
+    fun setFamilyMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FAMILY_MODE, enabled).apply()
+        _familyMode.value = enabled
     }
 }

@@ -22,13 +22,21 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.app.role.RoleManager
 import android.os.Build
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -45,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.example.sanctum.ui.theme.bounceClick
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,7 +97,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -122,7 +134,6 @@ import android.os.Environment
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
@@ -220,16 +231,14 @@ class MainActivity : ComponentActivity() {
         val intentUrl = intent?.dataString
 
         setContent {
-            MaterialTheme(
-                colorScheme = lightColorScheme(
-                    background = EditorialPaper,
-                    surface = EditorialSurface,
-                    primary = EditorialForest,
-                    onBackground = EditorialInk,
-                    onSurface = EditorialInk
-                ),
-                typography = AppTypography
-            ) {
+            val themeMode by PreferencesManager.theme.collectAsState()
+            val isDarkTheme = when (themeMode) {
+                "Dark" -> true
+                "Light" -> false
+                else -> isSystemInDarkTheme()
+            }
+            
+            com.example.sanctum.ui.theme.SanctumTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -241,10 +250,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+fun loadUrlWithDNT(view: android.webkit.WebView?, url: String) {
+    if (url.startsWith("file://") || url.startsWith("about:")) {
+        view?.loadUrl(url)
+        return
+    }
+    val extraHeaders = mutableMapOf<String, String>()
+    if (PreferencesManager.doNotTrack.value) {
+        extraHeaders["DNT"] = "1"
+    }
+    if (extraHeaders.isNotEmpty()) {
+        view?.loadUrl(url, extraHeaders)
+    } else {
+        view?.loadUrl(url)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     val context = LocalContext.current
+    
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+    
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+    
     val tabManager = remember { 
         TabManager().apply { 
             loadState(context)
@@ -276,9 +314,12 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     LaunchedEffect(desktopMode, thirdPartyCookies) {
         tabManager.tabs.forEach { tab ->
             tab.webView?.let { wv ->
-                val defaultUserAgent = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
-                val desktopAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
-                wv.settings.userAgentString = if (desktopMode) desktopAgent else defaultUserAgent
+                val defaultUserAgent = android.webkit.WebSettings.getDefaultUserAgent(context)
+                val mobileAgent = defaultUserAgent
+                    .replace("; wv", "")
+                    .replace(Regex("Version/\\d+\\.\\d+\\s?"), "")
+                val desktopAgent = mobileAgent.replace(Regex("\\(Linux;.*?\\)"), "(Windows NT 10.0; Win64; x64)").replace("Mobile Safari", "Safari")
+                wv.settings.userAgentString = if (desktopMode) desktopAgent else mobileAgent
                 android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, thirdPartyCookies)
                 wv.reload()
             }
@@ -321,7 +362,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     var httpsOnly by remember { mutableStateOf(prefs.getBoolean("httpsOnly", false)) }
     var shieldMode by remember { mutableStateOf(ShieldMode.valueOf(prefs.getString("shieldMode", ShieldMode.STANDARD.name) ?: ShieldMode.STANDARD.name)) }
     val totalBlockedCount by BlocklistManager.blockedCount.collectAsState()
-    var familyMode by remember { mutableStateOf(true) }
+    val familyMode by PreferencesManager.familyMode.collectAsState()
     
     // Native Search State
     var nativeSearchResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
@@ -339,7 +380,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
     val topSites = remember(history) {
         history.filter { it.url != "about:blank" && it.url.isNotEmpty() }
             .distinctBy { android.net.Uri.parse(it.url).host ?: it.url }
-            .take(3) // take 3 to leave room for the Add button
+            .take(5) // take up to 5 links
     }
     var newsFeed by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     
@@ -361,18 +402,28 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
             @SuppressLint("SetJavaScriptEnabled")
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.databaseEnabled = true
+            settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
+            
+            // Performance & Efficiency improvements
+            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
 
             // OAuth Bypasses & Settings
             val defaultUserAgent = settings.userAgentString
-            val desktopAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
-            val mobileAgent = defaultUserAgent.replace("; wv", "")
+            val mobileAgent = defaultUserAgent
+                .replace("; wv", "")
+                .replace(Regex("Version/\\d+\\.\\d+\\s?"), "")
+            val desktopAgent = mobileAgent.replace(Regex("\\(Linux;.*?\\)"), "(Windows NT 10.0; Win64; x64)").replace("Mobile Safari", "Safari")
             
             settings.userAgentString = if (PreferencesManager.desktopMode.value) desktopAgent else mobileAgent
+            android.webkit.CookieManager.getInstance().setAcceptCookie(true)
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, PreferencesManager.thirdPartyCookies.value)
 
             // Register JS interface for Blob downloads
@@ -384,9 +435,9 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     request: WebResourceRequest?
                 ): Boolean {
                     val urlStr = request?.url?.toString() ?: return false
-                    val enforced = SafeSearchEnforcer.enforce(urlStr)
+                    val enforced = if (PreferencesManager.familyMode.value) SafeSearchEnforcer.enforce(urlStr) else null
                     if (enforced != null) {
-                        view?.loadUrl(enforced)
+                        loadUrlWithDNT(view, enforced)
                         return true
                     }
                     return false
@@ -416,14 +467,19 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     super.onPageStarted(view, urlStr, favicon)
                     isLoading = true
                     
+                    // Anti-bot evasion: hide navigator.webdriver early in page load to bypass Turnstile/Cloudflare blocks
+                    val jsEvasion = "(function() { Object.defineProperty(navigator, 'webdriver', { get: () => undefined }); })();"
+                    view?.evaluateJavascript(jsEvasion, null)
+
+                    
                     val url = urlStr ?: return
                     if (url.startsWith("file:///android_asset/")) return
                     
                     // Direct SafeSearch check on start load as fallback
-                    val enforced = SafeSearchEnforce(url)
+                    val enforced = if (PreferencesManager.familyMode.value) SafeSearchEnforce(url) else null
                     if (enforced != null) {
                         view?.stopLoading()
-                        view?.loadUrl(enforced)
+                        loadUrlWithDNT(view, enforced)
                         return
                     }
                     
@@ -573,14 +629,14 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(EditorialPaper)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Elegant Shield Logo / Home trigger
+                    // Elegant Shield Logo / Home trigger (Circular shape)
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(36.dp)
+                            .clip(CircleShape)
                             .background(EditorialSurface)
                             .clickable {
                                 currentUrl = "sanctum://home"
@@ -591,104 +647,107 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                         androidx.compose.foundation.Image(
                             painter = painterResource(id = R.drawable.ic_sanctum_logo),
                             contentDescription = "Home",
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(24.dp).clip(CircleShape)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     // Address Bar
-                    TextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
+                    Row(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 44.dp)
-                            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
-                            .clip(RoundedCornerShape(4.dp)),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = EditorialSurface,
-                            unfocusedContainerColor = EditorialSurface,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedTextColor = EditorialInk,
-                            unfocusedTextColor = EditorialInk
-                        ),
-                        textStyle = TextStyle(
-                            fontFamily = Inter,
-                            fontSize = 13.sp,
-                            color = EditorialInk
-                        ),
-                        placeholder = {
-                            Text(
-                                text = "Search or type URL",
-                                color = EditorialMutedInk,
+                            .height(36.dp)
+                            .background(EditorialSurface, RoundedCornerShape(6.dp))
+                            .border(1.dp, EditorialBorder, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_search),
+                            contentDescription = "Search",
+                            tint = EditorialMutedInk,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            modifier = Modifier.weight(1f),
+                            textStyle = TextStyle(
                                 fontFamily = Inter,
-                                fontSize = 13.sp
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_search),
-                                contentDescription = "Search",
-                                tint = EditorialMutedInk,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        trailingIcon = {
-                            if (inputText.isNotEmpty()) {
-                                IconButton(onClick = { inputText = "" }) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_clear),
-                                        contentDescription = "Clear",
-                                        tint = EditorialMutedInk,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Uri,
-                            imeAction = ImeAction.Go
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onGo = {
-                                focusManager.clearFocus()
-                                var query = inputText.trim()
-                                if (query.isNotEmpty()) {
-                                    if (!query.contains(".") || query.contains(" ")) {
-                                        val engine = PreferencesManager.searchEngine.value
-                                        if (engine == "DuckDuckGo") {
-                                            currentNativeQuery = query
-                                            activeScreen = ActiveScreen.NATIVE_SEARCH
-                                            currentNativeTab = "All"
-                                            isNativeSearchLoading = true
-                                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                                                val response = SearchEngine.performSearch(query)
-                                                nativeSearchResults = response.results
-                                                nativeSearchTokens = response.nextTokens
-                                                isNativeSearchLoading = false
-                                            }
-                                            return@KeyboardActions
-                                        } else {
-                                            val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-                                            query = if (engine == "Google") {
-                                                "https://www.google.com/search?q=$encoded"
+                                fontSize = 13.sp,
+                                color = EditorialInk
+                            ),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Uri,
+                                imeAction = ImeAction.Go
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onGo = {
+                                    focusManager.clearFocus()
+                                    var query = inputText.trim()
+                                    if (query.isNotEmpty()) {
+                                        if (!query.contains(".") || query.contains(" ")) {
+                                            val engine = PreferencesManager.searchEngine.value
+                                            if (engine == "DuckDuckGo") {
+                                                currentNativeQuery = query
+                                                activeScreen = ActiveScreen.NATIVE_SEARCH
+                                                currentNativeTab = "All"
+                                                isNativeSearchLoading = true
+                                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                                    val response = SearchEngine.performSearch(query)
+                                                    nativeSearchResults = response.results
+                                                    nativeSearchTokens = response.nextTokens
+                                                    isNativeSearchLoading = false
+                                                }
+                                                return@KeyboardActions
                                             } else {
-                                                "https://www.bing.com/search?q=$encoded"
+                                                val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+                                                query = if (engine == "Google") {
+                                                    "https://www.google.com/search?q=$encoded"
+                                                } else {
+                                                    "https://www.bing.com/search?q=$encoded"
+                                                }
                                             }
+                                        } else if (!query.startsWith("http://") && !query.startsWith("https://")) {
+                                            query = "https://$query"
                                         }
-                                    } else if (!query.startsWith("http://") && !query.startsWith("https://")) {
-                                        query = "https://$query"
+                                        isLoading = true
+                                        progress = 0.1f
+                                        currentUrl = query
                                     }
-                                    isLoading = true
-                                    progress = 0.1f
-                                    currentUrl = query
+                                }
+                            ),
+                            decorationBox = { innerTextField ->
+                                androidx.compose.foundation.layout.Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (inputText.isEmpty()) {
+                                        Text(
+                                            text = "Search or type URL",
+                                            color = EditorialMutedInk,
+                                            fontFamily = Inter,
+                                            fontSize = 13.sp
+                                        )
+                                    }
+                                    innerTextField()
                                 }
                             }
-                        ),
-                        singleLine = true
-                    )
+                        )
+                        if (inputText.isNotEmpty()) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_clear),
+                                contentDescription = "Clear",
+                                tint = EditorialMutedInk,
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clickable { inputText = "" }
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.width(6.dp))
 
@@ -792,25 +851,55 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                     .fillMaxWidth()
                     .background(EditorialPaper)
             ) {
+                LaunchedEffect(currentUrl) {
+                    val wv = webViewRef!!
+                    if (currentUrl == "sanctum://home") {
+                        if (wv.url != "about:blank") {
+                            wv.loadUrl("about:blank")
+                            wv.clearHistory()
+                        }
+                    } else if (wv.url != currentUrl) {
+                        loadUrlWithDNT(wv, currentUrl)
+                    }
+                }
+
                 // WebView integration (always active to maintain state)
                 AndroidView(
-                    factory = { webViewRef!! },
-                    update = { webViewInstance ->
-                        if (currentUrl == "sanctum://home") {
-                            if (webViewInstance.url != "about:blank") {
-                                webViewInstance.loadUrl("about:blank")
-                                webViewInstance.clearHistory()
+                    factory = { ctx ->
+                        androidx.swiperefreshlayout.widget.SwipeRefreshLayout(ctx).apply {
+                            val wv = webViewRef!!
+                            (wv.parent as? ViewGroup)?.removeView(wv)
+                            addView(wv, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                            setOnRefreshListener {
+                                wv.reload()
                             }
-                        } else if (webViewInstance.url != currentUrl) {
-                            webViewInstance.loadUrl(currentUrl)
                         }
+                    },
+                    update = { swipeRefreshLayout ->
+                        val wv = webViewRef!!
+                        if (swipeRefreshLayout.getChildAt(0) != wv) {
+                            swipeRefreshLayout.removeAllViews()
+                            (wv.parent as? ViewGroup)?.removeView(wv)
+                            swipeRefreshLayout.addView(wv, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                        }
+                        
+                        swipeRefreshLayout.isRefreshing = isLoading
                     },
                     modifier = if (showWebView) Modifier.fillMaxSize() else Modifier.size(0.dp)
                 )
 
-                Crossfade(
+                AnimatedContent(
                     targetState = activeScreen,
-                    animationSpec = tween(durationMillis = 220),
+                    transitionSpec = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(220)
+                        ) + fadeIn(animationSpec = tween(220)) togetherWith
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                                    animationSpec = tween(220)
+                                ) + fadeOut(animationSpec = tween(220))
+                    },
                     modifier = Modifier.fillMaxSize(),
                     label = "screenSwitch"
                 ) { screen ->
@@ -846,6 +935,12 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                                     onSearchSubmit = { query ->
                                         var formattedQuery = query.trim()
                                         if (formattedQuery.isNotEmpty()) {
+                                            if (PreferencesManager.familyMode.value && KeywordFilter.containsExplicitKeywordInText(formattedQuery)) {
+                                                activeScreen = ActiveScreen.BROWSER
+                                                currentUrl = "file:///android_asset/blocked.html"
+                                                return@HomeScreen
+                                            }
+
                                             if (!formattedQuery.contains(".") || formattedQuery.contains(" ")) {
                                                 val engine = PreferencesManager.searchEngine.value
                                                 if (engine == "DuckDuckGo") {
@@ -950,7 +1045,7 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                             SettingsScreen(
                                 context = context,
                                 familyMode = familyMode,
-                                onFamilyModeChange = { familyMode = it },
+                                onFamilyModeChange = { PreferencesManager.setFamilyMode(it) },
                                 onClearData = {
                                     HistoryManager.clearHistory(context)
                                     webViewRef?.clearCache(true)
@@ -1065,15 +1160,44 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                 label = "settingsScale"
             )
 
+            var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+            val dragThreshold = 100f
+
             // Bottom Navigation Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .height(64.dp)
-                    .background(EditorialPaper, RoundedCornerShape(32.dp))
-                    .border(1.dp, EditorialBorder, RoundedCornerShape(32.dp))
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .height(48.dp)
+                    .background(EditorialPaper, RoundedCornerShape(24.dp))
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(24.dp))
+                    .padding(horizontal = 24.dp)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = { accumulatedDrag = 0f },
+                            onDragCancel = { accumulatedDrag = 0f },
+                            onHorizontalDrag = { change, dragAmount ->
+                                accumulatedDrag += dragAmount
+                                if (accumulatedDrag > dragThreshold) {
+                                    // Swipe right, go to previous tab
+                                    val newIndex = (tabManager.activeTabIndex.value - 1).coerceAtLeast(0)
+                                    if (newIndex != tabManager.activeTabIndex.value) {
+                                        tabManager.activeTabIndex.value = newIndex
+                                    }
+                                    accumulatedDrag = 0f
+                                    change.consume()
+                                } else if (accumulatedDrag < -dragThreshold) {
+                                    // Swipe left, go to next tab
+                                    val newIndex = (tabManager.activeTabIndex.value + 1).coerceAtMost(tabManager.tabs.lastIndex)
+                                    if (newIndex != tabManager.activeTabIndex.value) {
+                                        tabManager.activeTabIndex.value = newIndex
+                                    }
+                                    accumulatedDrag = 0f
+                                    change.consume()
+                                }
+                            }
+                        )
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -1081,13 +1205,13 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                 IconButton(
                     onClick = { webViewRef?.goBack() },
                     enabled = showWebView && canGoBack,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Back",
                         tint = backTint,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -1095,13 +1219,13 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                 IconButton(
                     onClick = { webViewRef?.goForward() },
                     enabled = showWebView && canGoForward,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowForward,
                         contentDescription = "Forward",
                         tint = forwardTint,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -1112,13 +1236,13 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                         currentUrl = "sanctum://home"
                         inputText = ""
                     },
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
                         tint = searchTint,
-                        modifier = Modifier.size(26.dp).graphicsLayer(scaleX = searchScale, scaleY = searchScale)
+                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = searchScale, scaleY = searchScale)
                     )
                 }
 
@@ -1137,39 +1261,39 @@ fun BrowserScreen(activity: MainActivity, initialUrl: String? = null) {
                         } catch (e: Exception) {}
                         activeScreen = ActiveScreen.TABS
                     },
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.List,
                         contentDescription = "Tabs",
                         tint = if (activeScreen == ActiveScreen.TABS) EditorialForest else EditorialMutedInk,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
                 // Tab 4.5: Safety Shield
                 IconButton(
                     onClick = { activeScreen = ActiveScreen.SAFETY_SHIELD },
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Security,
                         contentDescription = "Safety Shield",
                         tint = shieldTint,
-                        modifier = Modifier.size(24.dp).graphicsLayer(scaleX = shieldScale, scaleY = shieldScale)
+                        modifier = Modifier.size(20.dp).graphicsLayer(scaleX = shieldScale, scaleY = shieldScale)
                     )
                 }
 
                 // Tab 5: Settings / More
                 IconButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "Menu",
                         tint = settingsTint,
-                        modifier = Modifier.size(26.dp).graphicsLayer(scaleX = settingsScale, scaleY = settingsScale)
+                        modifier = Modifier.size(22.dp).graphicsLayer(scaleX = settingsScale, scaleY = settingsScale)
                     )
                 }
             }
@@ -1310,7 +1434,7 @@ fun HomeScreen(
                     painter = painterResource(id = R.drawable.ic_shield),
                     contentDescription = "Notification",
                     tint = EditorialInk,
-                    modifier = Modifier.size(22.dp).clickable { onProfileClick() }
+                    modifier = Modifier.size(22.dp).bounceClick { onProfileClick() }
                 )
                 Box(
                     modifier = Modifier
@@ -1376,7 +1500,7 @@ fun HomeScreen(
                     .weight(1.3f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFF0F172A))
-                    .clickable { onShieldClick() }
+                    .bounceClick { onShieldClick() }
                     .padding(16.dp)
                     .height(90.dp),
                 verticalArrangement = Arrangement.SpaceBetween
@@ -1403,7 +1527,7 @@ fun HomeScreen(
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(SecondaryAccent)
-                    .clickable { onSettingsClick() }
+                    .bounceClick { onSettingsClick() }
                     .padding(16.dp)
                     .height(90.dp),
                 verticalArrangement = Arrangement.SpaceBetween
@@ -1746,7 +1870,7 @@ fun TrendingListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .bounceClick(onClick = onClick)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -1807,7 +1931,7 @@ fun ProtectionListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .bounceClick(onClick = onClick)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -2290,7 +2414,7 @@ fun ShieldModeItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .bounceClick(onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -2736,7 +2860,7 @@ fun SettingsNavigationRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .bounceClick(onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -2983,7 +3107,7 @@ fun TabOverviewScreen(
                     .height(60.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(EditorialInk)
-                    .clickable { onNewTab() },
+                    .bounceClick { onNewTab() },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -3011,9 +3135,11 @@ fun SplashScreen(onSplashComplete: () -> Unit) {
         contentAlignment = androidx.compose.ui.Alignment.Center
     ) {
         androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_sanctum_logo),
+            painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_sanctum_logo_circle),
             contentDescription = "Splash Logo",
-            modifier = androidx.compose.ui.Modifier.size(160.dp)
+            modifier = androidx.compose.ui.Modifier
+                .size(100.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
         )
     }
 }

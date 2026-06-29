@@ -47,6 +47,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("io.coil-kt:coil-compose:2.6.0")
     testImplementation(libs.junit)

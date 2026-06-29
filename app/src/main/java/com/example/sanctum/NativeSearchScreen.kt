@@ -48,7 +48,7 @@ fun NativeSearchScreen(
             .fillMaxSize()
             .background(Color(0xFFFFFFFF)) // Google-like super light gray background
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         
         // Search Pill Header
         Row(
@@ -57,7 +57,7 @@ fun NativeSearchScreen(
                 .padding(horizontal = 16.dp)
                 .background(Color.White, RoundedCornerShape(24.dp))
                 .border(1.dp, Color(0xFFDFE1E5), RoundedCornerShape(24.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -69,7 +69,7 @@ fun NativeSearchScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = query,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontFamily = Inter,
                 color = Color(0xFF202124),
                 maxLines = 1,
@@ -86,7 +86,7 @@ fun NativeSearchScreen(
             )
         }
         
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         
         val tabs = listOf("All", "Images", "Videos", "News", "Maps")
         val selectedIndex = tabs.indexOf(currentTab).takeIf { it >= 0 } ?: 0
@@ -115,7 +115,7 @@ fun NativeSearchScreen(
                             fontFamily = Inter, 
                             fontWeight = if (title == currentTab) FontWeight.SemiBold else FontWeight.Medium,
                             color = if (title == currentTab) Color(0xFF1A73E8) else Color(0xFF5F6368),
-                            fontSize = 14.sp
+                            fontSize = 13.sp
                         ) 
                     }
                 )
@@ -231,38 +231,38 @@ fun SearchResultCard(result: SearchResult, onClick: (String) -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(4.dp))
             .clickable { onClick(result.url) }
-            .padding(vertical = 4.dp, horizontal = 4.dp)
+            .padding(vertical = 2.dp, horizontal = 4.dp)
     ) {
         // Breadcrumb URL
         Text(
             text = result.url.replace("https://", "").replace("http://", "").substringBefore("/"),
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontFamily = Inter,
             color = Color(0xFF202124), // Dark gray URL
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         
         // Title (Google Title Blue)
         Text(
             text = result.title,
-            fontSize = 18.sp, // Reduced from 20.sp
-            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp, // Reduced from 18.sp
+            fontWeight = FontWeight.Medium,
             fontFamily = Inter,
             color = Color(0xFF1A0DAB), // Standard blue
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         
         // Snippet
         Text(
             text = result.snippet,
-            fontSize = 13.sp, // Reduced from 14.sp
+            fontSize = 12.sp, // Reduced from 13.sp
             fontFamily = Inter,
             color = Color(0xFF4D5156), // Standard gray
-            lineHeight = 18.sp, // Reduced from 20.sp
+            lineHeight = 16.sp, // Reduced from 18.sp
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )

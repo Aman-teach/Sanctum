@@ -55,7 +55,7 @@ fun TabSwitcherScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                IconButton(onClick = { /* No-op for now */ }) {
+                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Lock, contentDescription = "Secure", tint = OnSurfaceVariant)
                 }
                 Text("Sanctum", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Primary)

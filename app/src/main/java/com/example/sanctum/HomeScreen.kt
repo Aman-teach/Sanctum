@@ -3,9 +3,13 @@ package com.example.sanctum
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import com.example.sanctum.ui.theme.bounceClick
+import com.example.sanctum.ui.theme.combinedBounceClick
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,9 +23,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -36,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.example.sanctum.ui.theme.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
@@ -54,12 +61,33 @@ fun HomeScreen(
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
 
+    val greeting = remember {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val timeGreeting = when (hour) {
+            in 5..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            in 17..20 -> "Good evening"
+            else -> "Night owl"
+        }
+        val funPhrases = listOf(
+            "Ready to explore?",
+            "Where to next?",
+            "What are we searching for?",
+            "Let's discover the web"
+        )
+        "$timeGreeting. ${funPhrases.random()}"
+    }
+
     LaunchedEffect(searchQuery, isFocused) {
         if (searchQuery.isNotBlank() && isFocused) {
             suggestions = SearchSuggestionManager.getSuggestions(searchQuery)
         } else {
             suggestions = emptyList()
         }
+    }
+
+    BackHandler(enabled = isFocused) {
+        isFocused = false
     }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -73,10 +101,20 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onShieldClick) {
-                    Icon(Icons.Default.Security, contentDescription = "Security", tint = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onShieldClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_sanctum_logo),
+                        contentDescription = "Security Shield",
+                        modifier = Modifier.size(36.dp).clip(CircleShape)
+                    )
                 }
-                Text(text = "Sanctum", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(text = greeting, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                 IconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
                 }
@@ -85,35 +123,34 @@ fun HomeScreen(
             // Main Content
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+                contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
             ) {
                 item {
                     // Search Pill
+                    val searchElevation by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = if (isFocused) 8.dp else 0.dp,
+                        animationSpec = androidx.compose.animation.core.tween(200),
+                        label = "searchElevation"
+                    )
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 32.dp)
+                            .padding(bottom = 20.dp)
+                            .shadow(elevation = searchElevation, shape = RoundedCornerShape(24.dp))
                             .background(SurfaceContainerLowest, RoundedCornerShape(24.dp))
                             .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha=0.1f), RoundedCornerShape(24.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .clickable { isFocused = true }
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
                             Spacer(modifier = Modifier.width(12.dp))
-                            BasicTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(focusRequester)
-                                    .onFocusChanged { isFocused = it.isFocused },
-                                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = {
-                                    focusManager.clearFocus()
-                                    onSearchSubmit(searchQuery)
-                                })
+                            Text(
+                                text = if (searchQuery.isNotEmpty()) searchQuery else "Search...",
+                                color = if (searchQuery.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f),
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
                             )
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
@@ -125,97 +162,295 @@ fun HomeScreen(
 
                     // Quick Access Grid
                     var showAddShortcutDialog by remember { mutableStateOf(false) }
+                    var shortcutToDelete by remember { mutableStateOf<HistoryItem?>(null) }
 
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp, start = 16.dp, end = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
                     ) {
-                        // Add Shortcut Button
+                        // Add Shortcut Button (Circular & smaller)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
-                                .width(72.dp)
+                                .width(52.dp)
                                 .clickable { showAddShortcutDialog = true }
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(56.dp)
-                                    .background(SurfaceContainerLow, RoundedCornerShape(16.dp))
-                                    .border(1.dp, SurfaceContainerHigh, RoundedCornerShape(16.dp)),
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(SurfaceContainerLow)
+                                    .border(1.dp, SurfaceContainerHigh, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add Shortcut", tint = MaterialTheme.colorScheme.onSurface)
+                                Icon(Icons.Default.Add, contentDescription = "Add Shortcut", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Add", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Add", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
 
                         if (topSites.isNotEmpty()) {
                             topSites.forEach { site ->
                                 val domain = android.net.Uri.parse(site.url).host ?: site.title
-                                val faviconUrl = "https://www.google.com/s2/favicons?domain=$domain&sz=128"
+                                val faviconUrl = "https://icon.horse/icon/$domain"
                                 QuickAccessItem(
-                                    name = if (site.title.length > 12) site.title.substring(0, 12) + "..." else site.title.ifEmpty { domain },
+                                    name = if (site.title.length > 10) site.title.substring(0, 10) + "..." else site.title.ifEmpty { domain },
                                     iconUrl = faviconUrl,
+                                    onLongClick = { shortcutToDelete = site },
                                     onClick = { onSearchSubmit(site.url) }
                                 )
                             }
                         } else {
                             // Fallback
-                            QuickAccessItem("GitHub", "https://github.githubassets.com/favicons/favicon.png") { onSearchSubmit("https://github.com") }
-                            QuickAccessItem("YouTube", "https://www.youtube.com/s/desktop/2e12e8ba/img/favicon_96x96.png") { onSearchSubmit("https://youtube.com") }
+                            QuickAccessItem("GitHub", "https://icon.horse/icon/github.com") { onSearchSubmit("https://github.com") }
+                            QuickAccessItem("YouTube", "https://icon.horse/icon/youtube.com") { onSearchSubmit("https://youtube.com") }
+                            QuickAccessItem("Google", "https://icon.horse/icon/google.com") { onSearchSubmit("https://google.com") }
                         }
                     }
 
                     if (showAddShortcutDialog) {
-                        var newShortcutUrl by remember { mutableStateOf("") }
-                        androidx.compose.material3.AlertDialog(
-                            onDismissRequest = { showAddShortcutDialog = false },
-                            title = { Text("Add Shortcut") },
-                            text = {
-                                androidx.compose.material3.OutlinedTextField(
-                                    value = newShortcutUrl,
-                                    onValueChange = { newShortcutUrl = it },
-                                    label = { Text("URL") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            },
-                            confirmButton = {
-                                androidx.compose.material3.TextButton(onClick = {
-                                    if (newShortcutUrl.isNotBlank()) {
-                                        var finalUrl = newShortcutUrl.trim()
-                                        if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
-                                            finalUrl = "https://$finalUrl"
-                                        }
-                                        HistoryManager.addHistory(context, finalUrl, android.net.Uri.parse(finalUrl).host ?: finalUrl)
-                                        showAddShortcutDialog = false
+                        var shortcutName by remember { mutableStateOf("") }
+                        var shortcutUrl by remember { mutableStateOf("") }
+                        
+                        androidx.compose.ui.window.Dialog(onDismissRequest = { showAddShortcutDialog = false }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .shadow(8.dp, RoundedCornerShape(16.dp))
+                                    .background(EditorialPaper, RoundedCornerShape(16.dp))
+                                    .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+                                    .padding(20.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
+                                    Text(
+                                        text = "Add Shortcut",
+                                        fontFamily = Inter,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = EditorialInk
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    
+                                    // Name Field
+                                    Text("Name", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EditorialMutedInk, fontFamily = Inter)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(38.dp)
+                                            .background(EditorialSurface, RoundedCornerShape(6.dp))
+                                            .border(1.dp, EditorialBorder, RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        BasicTextField(
+                                            value = shortcutName,
+                                            onValueChange = { shortcutName = it },
+                                            modifier = Modifier.weight(1f),
+                                            textStyle = TextStyle(fontFamily = Inter, fontSize = 13.sp, color = EditorialInk),
+                                            singleLine = true,
+                                            decorationBox = { innerTextField ->
+                                                androidx.compose.foundation.layout.Box(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentAlignment = Alignment.CenterStart
+                                                ) {
+                                                    if (shortcutName.isEmpty()) {
+                                                        Text("e.g. ChatGPT", color = EditorialMutedInk, fontFamily = Inter, fontSize = 13.sp)
+                                                    }
+                                                    innerTextField()
+                                                }
+                                            }
+                                        )
                                     }
-                                }) {
-                                    Text("Add")
-                                }
-                            },
-                            dismissButton = {
-                                androidx.compose.material3.TextButton(onClick = { showAddShortcutDialog = false }) {
-                                    Text("Cancel")
+                                    
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    
+                                    // URL Field
+                                    Text("Web Address (URL)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EditorialMutedInk, fontFamily = Inter)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(38.dp)
+                                            .background(EditorialSurface, RoundedCornerShape(6.dp))
+                                            .border(1.dp, EditorialBorder, RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        BasicTextField(
+                                            value = shortcutUrl,
+                                            onValueChange = { shortcutUrl = it },
+                                            modifier = Modifier.weight(1f),
+                                            textStyle = TextStyle(fontFamily = Inter, fontSize = 13.sp, color = EditorialInk),
+                                            singleLine = true,
+                                            decorationBox = { innerTextField ->
+                                                androidx.compose.foundation.layout.Box(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentAlignment = Alignment.CenterStart
+                                                ) {
+                                                    if (shortcutUrl.isEmpty()) {
+                                                        Text("e.g. chatgpt.com", color = EditorialMutedInk, fontFamily = Inter, fontSize = 13.sp)
+                                                    }
+                                                    innerTextField()
+                                                }
+                                            }
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    
+                                    // Buttons
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Cancel",
+                                            fontFamily = Inter,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = EditorialMutedInk,
+                                            modifier = Modifier
+                                                .clickable { showAddShortcutDialog = false }
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(EditorialForest)
+                                                .clickable {
+                                                    if (shortcutUrl.isNotBlank()) {
+                                                        var finalUrl = shortcutUrl.trim()
+                                                        if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
+                                                            finalUrl = "https://$finalUrl"
+                                                        }
+                                                        val host = android.net.Uri.parse(finalUrl).host ?: finalUrl
+                                                        val finalTitle = shortcutName.trim().ifEmpty { host }
+                                                        HistoryManager.addHistory(context, finalUrl, finalTitle)
+                                                        showAddShortcutDialog = false
+                                                    }
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = "Add",
+                                                fontFamily = Inter,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = androidx.compose.ui.graphics.Color.White
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        )
+                        }
+                    }
+
+                    if (shortcutToDelete != null) {
+                        val site = shortcutToDelete!!
+                        androidx.compose.ui.window.Dialog(onDismissRequest = { shortcutToDelete = null }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .shadow(8.dp, RoundedCornerShape(16.dp))
+                                    .background(EditorialPaper, RoundedCornerShape(16.dp))
+                                    .border(1.dp, EditorialBorder, RoundedCornerShape(16.dp))
+                                    .padding(20.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
+                                    Text(
+                                        text = "Remove Shortcut",
+                                        fontFamily = Inter,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = EditorialInk
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Are you sure you want to remove \"${site.title}\" from your home screen?",
+                                        fontFamily = Inter,
+                                        fontSize = 13.sp,
+                                        color = EditorialMutedInk
+                                    )
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Cancel",
+                                            fontFamily = Inter,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = EditorialMutedInk,
+                                            modifier = Modifier
+                                                .clickable { shortcutToDelete = null }
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(androidx.compose.ui.graphics.Color(0xFFEF4444))
+                                                .clickable {
+                                                    HistoryManager.removeAllHistoryForUrl(context, site.url)
+                                                    shortcutToDelete = null
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = "Remove",
+                                                fontFamily = Inter,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = androidx.compose.ui.graphics.Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Tech News Section
                     if (newsFeed.isNotEmpty()) {
                         Text(
                             text = "Latest Tech News",
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 12.dp)
                         )
                         
-                        newsFeed.forEach { news ->
-                            NewsItemCard(news = news, onClick = { onSearchSubmit(news.link) })
-                            Spacer(modifier = Modifier.height(16.dp))
+                        newsFeed.forEachIndexed { index, news ->
+                            var visible by remember { mutableStateOf(false) }
+                            LaunchedEffect(news.link) {
+                                delay(index * 100L)
+                                visible = true
+                            }
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = visible,
+                                enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + slideInVertically(
+                                    initialOffsetY = { 20 },
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            ) {
+                                Column {
+                                    NewsItemCard(news = news, onClick = { onSearchSubmit(news.link) })
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+                            }
                         }
                     } else {
                         // Loading news skeleton or just empty space
@@ -250,8 +485,16 @@ fun HomeScreen(
                             .padding(horizontal = 16.dp)
                             .background(SurfaceContainerLowest, RoundedCornerShape(24.dp))
                             .border(1.dp, Primary, RoundedCornerShape(24.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
+                        var hasGainedFocus by remember { mutableStateOf(false) }
+                        
+                        LaunchedEffect(Unit) {
+                            try {
+                                focusRequester.requestFocus()
+                            } catch (e: Exception) {}
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Search, contentDescription = "Search", tint = Primary)
                             Spacer(modifier = Modifier.width(12.dp))
@@ -260,7 +503,14 @@ fun HomeScreen(
                                 onValueChange = { searchQuery = it },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .focusRequester(focusRequester),
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { 
+                                        if (it.isFocused) {
+                                            hasGainedFocus = true
+                                        } else if (hasGainedFocus) {
+                                            isFocused = false
+                                        }
+                                    },
                                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -305,29 +555,39 @@ fun HomeScreen(
 }
 
 @Composable
-fun QuickAccessItem(name: String, iconUrl: String, onClick: () -> Unit) {
+fun QuickAccessItem(
+    name: String,
+    iconUrl: String,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier
+            .width(52.dp)
+            .combinedBounceClick(onLongClick = onLongClick, onClick = onClick)
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .background(SurfaceContainerLow, RoundedCornerShape(12.dp))
-                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha=0.1f).copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(SurfaceContainerLow)
+                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
                 model = iconUrl,
                 contentDescription = name,
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(20.dp).clip(CircleShape),
                 contentScale = ContentScale.Fit
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(name, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(name, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+
+
 
 @Composable
 fun NewsItemCard(news: NewsItem, onClick: () -> Unit) {
@@ -335,9 +595,9 @@ fun NewsItemCard(news: NewsItem, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
+            .bounceClick { onClick() }
             .background(SurfaceContainerLow)
-            .padding(12.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (news.imageUrl.isNotEmpty()) {
@@ -346,20 +606,20 @@ fun NewsItemCard(news: NewsItem, onClick: () -> Unit) {
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(72.dp)
+                    .size(64.dp)
                     .clip(RoundedCornerShape(8.dp))
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = news.title,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                lineHeight = 18.sp
+                lineHeight = 16.sp
             )
             Spacer(modifier = Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
